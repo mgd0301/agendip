@@ -203,11 +203,30 @@ export default function Agenda() {
     return () => ctrl.abort();
   }, [desde, hasta, profIds, version]);
 
-  const mover = (n) => {
-    if (vista === 'dia' || vista === '4dias') setFecha(sumarDias(fecha, n));
-    else if (vista === 'semana') setFecha(sumarDias(fecha, 7 * n));
-    else setFecha(sumarMeses(fecha, n));
-  };
+  const mover = useCallback(
+    (n) =>
+      setFecha((f) => {
+        if (vista === 'dia' || vista === '4dias') return sumarDias(f, n);
+        if (vista === 'semana') return sumarDias(f, 7 * n);
+        return sumarMeses(f, n);
+      }),
+    [vista]
+  );
+
+  // Ctrl + flecha derecha/izquierda: igual que los botones › y ‹.
+  // No actúa con una ventana abierta ni escribiendo en un campo (ahí Ctrl+flecha salta palabras).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      e.preventDefault();
+      mover(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mover]);
 
   const toggleProf = (id) => {
     const actual = profIds;
