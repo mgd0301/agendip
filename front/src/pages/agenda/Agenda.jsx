@@ -88,7 +88,7 @@ const leer = (k, def) => {
 export default function Agenda() {
   const { usuario } = useAuth();
   const { profesionales, estados } = useDatos();
-  const [vista, setVista] = useState(() => (esMovil() ? 'dia' : leer('agendip_vista', 'semana')));
+  const [vista, setVista] = useState(() => (esMovil() ? 'dia' : '4dias'));
   const [fecha, setFecha] = useState(hoy());
   const [seleccion, setSeleccion] = useState(() => leer('agendip_profs', null));
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
@@ -109,15 +109,15 @@ export default function Agenda() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('agendip_vista', JSON.stringify(vista));
       if (seleccion) localStorage.setItem('agendip_profs', JSON.stringify(seleccion));
     } catch {
       /* almacenamiento no disponible */
     }
-  }, [vista, seleccion]);
+  }, [seleccion]);
 
   const [desde, hasta] = useMemo(() => {
     if (vista === 'dia') return [fecha, fecha];
+    if (vista === '4dias') return [fecha, sumarDias(fecha, 3)];
     if (vista === 'semana') {
       const a = inicioSemana(fecha);
       return [a, sumarDias(a, 6)];
@@ -158,6 +158,7 @@ export default function Agenda() {
 
   const mover = (n) => {
     if (vista === 'dia') setFecha(sumarDias(fecha, n));
+    else if (vista === '4dias') setFecha(sumarDias(fecha, 4 * n));
     else if (vista === 'semana') setFecha(sumarDias(fecha, 7 * n));
     else setFecha(sumarMeses(fecha, n));
   };
@@ -190,7 +191,7 @@ export default function Agenda() {
         profIds: [p.id],
       }));
     }
-    if (vista === 'semana') {
+    if (vista === 'semana' || vista === '4dias') {
       return rango(desde, hasta).map((f) => {
         const cant = datos.turnos.filter((tu) => tu.inicio.startsWith(f)).length;
         return {
@@ -244,6 +245,7 @@ export default function Agenda() {
           <Segmented>
             {[
               ['dia', 'Día'],
+              ['4dias', '4 días'],
               ['semana', 'Semana'],
               ['mes', 'Mes'],
             ].map(([v, l]) => (
@@ -294,7 +296,7 @@ export default function Agenda() {
           datos={datos}
           estados={estados}
           profesionales={profesionales}
-          minWidth={vista === 'dia' ? 200 : 120}
+          minWidth={vista === 'dia' ? 200 : vista === '4dias' ? 170 : 120}
           onNuevo={(inicial) => setModal({ inicial })}
           onAbrir={(id) => setModal({ turnoId: id })}
         />

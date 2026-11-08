@@ -10,6 +10,12 @@ export const hoy = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+// Fecha y hora actual como 'YYYY-MM-DD HH:MM' (para comparar con fecha + hora de un turno).
+export const ahora = () => {
+  const d = new Date();
+  return `${hoy()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const aDate = (f) => {
   const [y, m, d] = f.split('-').map(Number);
   return new Date(y, m - 1, d, 12);

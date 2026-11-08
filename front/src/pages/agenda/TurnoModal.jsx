@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
 import PacienteSelector from '../../components/PacienteSelector';
 import { Badge, Button, Field, Grid, Input, Modal, Muted, Row, Select, Spinner, Tab, Tabs, Textarea } from '../../components/ui';
-import { fechaHora, fechaLarga } from '../../utils/fechas';
+import { ahora, fechaHora, fechaLarga } from '../../utils/fechas';
 import { confirmar } from '../../utils/confirmar';
 import { theme as t } from '../../styles/GlobalStyle';
 
@@ -95,6 +95,10 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
 
   const prof = profesionales.find((p) => Number(p.id) === Number(form.profesional_id));
   const cancelado = turno?.estado === 'cancelado';
+  // Turno nuevo (o reprogramado) para un momento que ya pasó: se permite, pero avisando.
+  const fechaHoraForm = `${form.fecha} ${form.hora}`;
+  const enPasado =
+    !!form.fecha && !!form.hora && fechaHoraForm < ahora() && (!turno || turno.inicio.slice(0, 16) !== fechaHoraForm);
 
   const cargar = () =>
     api.get(`/turnos/${turnoId}`).then(({ data }) => {
@@ -159,6 +163,19 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
   const guardar = async (sobreturno = false) => {
     if (!form.paciente) return toast.error('Seleccione o cree un paciente');
     if (!form.profesional_id || !form.fecha || !form.hora) return toast.error('Complete profesional, fecha y hora');
+    if (
+      !sobreturno &&
+      enPasado &&
+      !(await confirmar({
+        tipo: 'aviso',
+        titulo: 'La fecha ya pasó',
+        mensaje: `El turno es para el ${fechaLarga(form.fecha)} a las ${form.hora}, antes del momento actual.
+
+¿Cargarlo igual? Sirve para registrar atenciones que no se anotaron a tiempo.`,
+        aceptar: 'Cargar igual',
+      }))
+    )
+      return;
     setGuardando(true);
     const body = {
       profesional_id: form.profesional_id,
@@ -361,6 +378,12 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
                   </datalist>
                 </Field>
               </Row>
+
+              {!cancelado && enPasado && (
+                <Aviso style={{ gridColumn: '1 / -1', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiClock /> La fecha y hora elegidas ya pasaron. Se puede cargar igual, pero revisá que sea correcto.
+                </Aviso>
+              )}
 
               {!cancelado && libres && form.profesional_id && form.fecha && (
                 <div style={{ gridColumn: '1 / -1' }}>
