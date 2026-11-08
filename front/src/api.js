@@ -5,7 +5,7 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/ap
 const api = axios.create({ baseURL: API_URL });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('agendia_token');
+  const token = localStorage.getItem('agendip_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -13,8 +13,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && localStorage.getItem('agendia_token')) {
-      localStorage.removeItem('agendia_token');
+    if (err.response?.status === 401 && localStorage.getItem('agendip_token')) {
+      localStorage.removeItem('agendip_token');
       window.location.reload();
     }
     return Promise.reject(err);

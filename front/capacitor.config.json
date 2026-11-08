@@ -1,6 +1,6 @@
 {
-  "appId": "com.zielsoft.agendia",
-  "appName": "Agendia",
+  "appId": "com.zielsoft.agendip",
+  "appName": "Agendip",
   "webDir": "dist",
   "server": {
     "androidScheme": "http",

@@ -62,7 +62,7 @@ export default function Login() {
     <Fondo>
       <Caja onSubmit={enviar}>
         <h1>
-          Agend<span>ia</span>
+          Agend<span>ip</span>
         </h1>
         <p>{modo === 'login' ? 'Gestión de agendas y turnos' : 'Creá la cuenta de tu consultorio'}</p>
         {modo === 'registro' && (

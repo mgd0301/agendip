@@ -171,7 +171,7 @@ export default function Layout() {
           <Brand>
             <div>
               <strong>
-                Agend<span>ia</span>
+                Agend<span>ip</span>
               </strong>
               <small>{usuario.organizacion.nombre}</small>
             </div>
@@ -200,7 +200,7 @@ export default function Layout() {
               <FiMenu size={22} />
             </button>
             <strong>
-              Agend<span>ia</span>
+              Agend<span>ip</span>
             </strong>
           </TopBar>
           <Outlet />

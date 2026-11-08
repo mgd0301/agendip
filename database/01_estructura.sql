@@ -1,5 +1,5 @@
 -- =====================================================================
---  AGENDIA - Gestión de agendas y turnos profesionales
+--  AGENDIP - Gestión de agendas y turnos profesionales
 --  Script de estructura de base de datos
 --
 --  Compatible con MySQL 5.0 o superior.

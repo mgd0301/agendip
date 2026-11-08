@@ -1,4 +1,4 @@
-# Agendia
+# Agendip
 
 Sistema de turnos para consultorios y centros de salud (Ziel Soft).
 
@@ -19,7 +19,7 @@ mysql -u root -p < database/02_datos_demo.sql    # opcional: organización de pr
 ```
 
 - `01_estructura.sql` se puede volver a ejecutar sin perder datos (usa `CREATE TABLE IF NOT EXISTS`).
-- Con los datos demo se ingresa con **admin@agendia.com** / **admin123**. Cambie esa contraseña después de entrar.
+- Con los datos demo se ingresa con **admin@agendip.com** / **admin123**. Cambie esa contraseña después de entrar.
 - Sin datos demo, use «Crear cuenta» en la pantalla de ingreso: se crea la organización con su usuario administrador.
 
 Por compatibilidad con MySQL 5.0, el script:

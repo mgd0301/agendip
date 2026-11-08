@@ -88,9 +88,9 @@ const leer = (k, def) => {
 export default function Agenda() {
   const { usuario } = useAuth();
   const { profesionales, estados } = useDatos();
-  const [vista, setVista] = useState(() => (esMovil() ? 'dia' : leer('agendia_vista', 'semana')));
+  const [vista, setVista] = useState(() => (esMovil() ? 'dia' : leer('agendip_vista', 'semana')));
   const [fecha, setFecha] = useState(hoy());
-  const [seleccion, setSeleccion] = useState(() => leer('agendia_profs', null));
+  const [seleccion, setSeleccion] = useState(() => leer('agendip_profs', null));
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
   const [modal, setModal] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -109,8 +109,8 @@ export default function Agenda() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('agendia_vista', JSON.stringify(vista));
-      if (seleccion) localStorage.setItem('agendia_profs', JSON.stringify(seleccion));
+      localStorage.setItem('agendip_vista', JSON.stringify(vista));
+      if (seleccion) localStorage.setItem('agendip_profs', JSON.stringify(seleccion));
     } catch {
       /* almacenamiento no disponible */
     }

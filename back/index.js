@@ -53,4 +53,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3001;
-app.listen(PORT, () => console.log(`Agendia API escuchando en http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Agendip API escuchando en http://localhost:${PORT}`));

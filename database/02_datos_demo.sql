@@ -1,8 +1,8 @@
 -- =====================================================================
---  AGENDIA - Datos iniciales de demostración
+--  AGENDIP - Datos iniciales de demostración
 --  Ejecutar después de 01_estructura.sql. Compatible con MySQL 5.0.
 --
---  Usuario de acceso:  admin@agendia.com  /  admin123
+--  Usuario de acceso:  admin@agendip.com  /  admin123
 --  (cambiar la contraseña después del primer ingreso)
 -- =====================================================================
 
@@ -10,7 +10,7 @@ USE agendia;
 SET NAMES utf8;
 
 INSERT IGNORE INTO organizaciones (id, nombre, tipo, email, telefono, direccion)
-VALUES (1, 'Consultorio Demo', 'consultorio', 'contacto@agendia.com', '351 555-0000', 'Av. Siempre Viva 742');
+VALUES (1, 'Consultorio Demo', 'consultorio', 'contacto@agendip.com', '351 555-0000', 'Av. Siempre Viva 742');
 
 INSERT IGNORE INTO profesionales (id, organizacion_id, nombre, apellido, especialidad, matricula, color, duracion_turno_min)
 VALUES
@@ -18,7 +18,7 @@ VALUES
   (2, 1, 'Martín', 'Pérez', 'Kinesiología', 'MP 67890', '#059669', 30);
 
 INSERT IGNORE INTO usuarios (id, organizacion_id, nombre, email, password_hash, rol, puede_sobreturno)
-VALUES (1, 1, 'Administrador', 'admin@agendia.com',
+VALUES (1, 1, 'Administrador', 'admin@agendip.com',
         '$2b$10$91eXZ.h3CdDbtKBdUH.a2O85WHWeObhbarME1zFoBxLu.jlqxIEyu', 'admin', 1);
 
 INSERT IGNORE INTO prestaciones (id, organizacion_id, nombre, duracion_min, color)
