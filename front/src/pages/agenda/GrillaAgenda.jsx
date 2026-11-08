@@ -330,7 +330,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                   $prof={colorProf[tu.profesional_id] || tu.prof_color}
                   $estado={est.color || '#64748b'}
                   $apagado={['atendido', 'ausente', 'cancelado'].includes(tu.estado)}
-                  style={{ top: y(a) + 1, height: h, left: `calc(${lane * ancho}% + 2px)`, width: `calc(${ancho}% - 4px)` }}
+                  style={{ top: y(a) + 1, height: h, padding: h < 24 ? '1px 6px' : undefined, left: `calc(${lane * ancho}% + 2px)`, width: `calc(${ancho}% - 4px)` }}
                   onClick={(e) => {
                     e.stopPropagation();
                     onAbrir(tu.id);

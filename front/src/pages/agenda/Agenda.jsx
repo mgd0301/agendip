@@ -52,7 +52,8 @@ const PanelOpciones = styled.div`
   top: calc(100% + 6px);
   right: 0;
   z-index: 40;
-  width: 230px;
+  width: 320px;
+  max-width: calc(100vw - 24px);
   background: #fff;
   border: 1px solid ${t.border};
   border-radius: 10px;
@@ -330,6 +331,7 @@ export default function Agenda() {
                   {[
                     ['normal', 'Normal'],
                     ['compacta', 'Compacta'],
+                    ['super', 'Súper compacta'],
                   ].map(([v, l]) => (
                     <button key={v} aria-pressed={altura === v} onClick={() => elegirAltura(v)} style={{ flex: 1 }}>
                       {l}
