@@ -204,8 +204,7 @@ export default function Agenda() {
   }, [desde, hasta, profIds, version]);
 
   const mover = (n) => {
-    if (vista === 'dia') setFecha(sumarDias(fecha, n));
-    else if (vista === '4dias') setFecha(sumarDias(fecha, 4 * n));
+    if (vista === 'dia' || vista === '4dias') setFecha(sumarDias(fecha, n));
     else if (vista === 'semana') setFecha(sumarDias(fecha, 7 * n));
     else setFecha(sumarMeses(fecha, n));
   };
