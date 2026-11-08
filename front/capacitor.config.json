@@ -1,0 +1,9 @@
+{
+  "appId": "com.zielsoft.agendia",
+  "appName": "Agendia",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}
