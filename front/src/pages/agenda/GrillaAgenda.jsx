@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { aHora, aMin, hoy } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
+import { ALTURAS } from './alturas';
 
-const PPM = 1.5; // píxeles por minuto: un turno de 30 min mide 45px
 const GUTTER = 56;
 
 const Scroller = styled.div`
@@ -75,7 +75,7 @@ const Lineas = styled.div`
     ${t.border} 0,
     ${t.border} 1px,
     transparent 1px,
-    transparent ${30 * PPM}px
+    transparent ${(p) => 30 * p.$ppm}px
   );
   background-position-y: ${(p) => p.$offset}px;
   opacity: 0.8;
@@ -211,7 +211,7 @@ function useMinutoActual() {
  * Grilla horaria para vistas de día y semana.
  * columnas: [{ key, fecha, titulo, subtitulo, color, profIds: [] }]
  */
-export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, minWidth = 140 }) {
+export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, minWidth = 140, ppm = ALTURAS.normal }) {
   const scrollRef = useRef(null);
   const minutoActual = useMinutoActual();
   const fechaHoy = hoy();
@@ -256,8 +256,8 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     return [Math.floor(a / 60) * 60, Math.min(1440, Math.ceil(b / 60) * 60)];
   }, [cols]);
 
-  const alto = (hasta - desde) * PPM;
-  const y = (min) => (min - desde) * PPM;
+  const alto = (hasta - desde) * ppm;
+  const y = (min) => (min - desde) * ppm;
 
   // Al abrir, posiciona la vista cerca de la hora actual o del primer turno.
   useEffect(() => {
@@ -267,11 +267,11 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     const objetivo = tieneHoy ? minutoActual - 60 : desde;
     el.scrollTop = Math.max(0, y(objetivo));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnas.map((c) => c.key).join(), desde]);
+  }, [columnas.map((c) => c.key).join(), desde, ppm]);
 
   const click = (c) => (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const min = desde + (e.clientY - rect.top) / PPM;
+    const min = desde + (e.clientY - rect.top) / ppm;
     const paso = c.profIds.length === 1 ? pasoProf[c.profIds[0]] : 15;
     const snap = Math.floor(min / paso) * paso;
     // Si cae dentro de una franja, alinear a la grilla de esa franja.
@@ -308,20 +308,20 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
         {cols.map((c) => (
           <Columna key={c.key} $h={alto} onClick={click(c)}>
             {c.franjas.map(([a, b], i) => (
-              <Franja key={i} style={{ top: y(a), height: (b - a) * PPM }} />
+              <Franja key={i} style={{ top: y(a), height: (b - a) * ppm }} />
             ))}
-            <Lineas $offset={(30 - (desde % 30)) * PPM} />
+            <Lineas $ppm={ppm} $offset={(30 - (desde % 30)) * ppm} />
             {c.bloqueos.map((b) => {
               const a = Math.max(aMin(b.desde), desde);
               const z = b.dia_completo ? hasta : Math.min(aMin(b.hasta), hasta);
               return (
-                <Bloqueo key={b.id} style={{ top: y(a), height: Math.max((z - a) * PPM, 18) }}>
+                <Bloqueo key={b.id} style={{ top: y(a), height: Math.max((z - a) * ppm, 18) }}>
                   <span>{b.motivo || b.tipo.replace('_', ' ')}</span>
                 </Bloqueo>
               );
             })}
             {c.turnos.map(({ tu, a, b, lane, total }) => {
-              const h = Math.max((b - a) * PPM - 2, 16);
+              const h = Math.max((b - a) * ppm - 2, 16);
               const est = estados[tu.estado] || {};
               const ancho = 100 / total;
               return (

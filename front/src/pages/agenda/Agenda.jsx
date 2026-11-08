@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiRefreshCw, FiSliders } from 'react-icons/fi';
 import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
@@ -10,6 +10,7 @@ import { Button, IconButton, Row, Segmented } from '../../components/ui';
 import { DIAS_CORTOS, MESES, diaSemana, fechaLarga, finMes, hoy, inicioMes, inicioSemana, rango, sumarDias, sumarMeses } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
 import GrillaAgenda from './GrillaAgenda';
+import { ALTURAS } from './alturas';
 import VistaMes from './VistaMes';
 import TurnoModal from './TurnoModal';
 import EnviarAgendaModal from '../../components/EnviarAgendaModal';
@@ -40,6 +41,24 @@ const BotonRecargar = styled(IconButton)`
       color: ${t.primary};
       svg { animation: ${girar} 0.7s linear infinite; }
     `}
+`;
+
+const Opciones = styled.div`
+  position: relative;
+`;
+
+const PanelOpciones = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 230px;
+  background: #fff;
+  border: 1px solid ${t.border};
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  padding: 12px;
+  h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: ${t.muted}; margin: 0 0 8px; }
 `;
 
 const Chips = styled.div`
@@ -94,6 +113,34 @@ export default function Agenda() {
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
   const [modal, setModal] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [altura, setAltura] = useState(() => {
+    const v = leer('agendip_altura', 'normal');
+    return ALTURAS[v] ? v : 'normal';
+  });
+  const [opciones, setOpciones] = useState(false);
+  const opcionesRef = useRef(null);
+
+  // Cierra el panel de opciones al hacer clic afuera o con Escape.
+  useEffect(() => {
+    if (!opciones) return;
+    const fuera = (e) => !opcionesRef.current?.contains(e.target) && setOpciones(false);
+    const esc = (e) => e.key === 'Escape' && setOpciones(false);
+    document.addEventListener('mousedown', fuera);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', fuera);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [opciones]);
+
+  const elegirAltura = (v) => {
+    setAltura(v);
+    try {
+      localStorage.setItem('agendip_altura', JSON.stringify(v));
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  };
 
   // Profesionales visibles: el rol profesional solo ve su agenda.
   const visibles = useMemo(
@@ -254,6 +301,26 @@ export default function Agenda() {
               </button>
             ))}
           </Segmented>
+          <Opciones ref={opcionesRef}>
+            <IconButton onClick={() => setOpciones(!opciones)} aria-label="Opciones de la agenda" title="Opciones" aria-expanded={opciones}>
+              <FiSliders size={18} />
+            </IconButton>
+            {opciones && (
+              <PanelOpciones>
+                <h4>Altura de las filas</h4>
+                <Segmented style={{ width: '100%' }}>
+                  {[
+                    ['normal', 'Normal'],
+                    ['compacta', 'Compacta'],
+                  ].map(([v, l]) => (
+                    <button key={v} aria-pressed={altura === v} onClick={() => elegirAltura(v)} style={{ flex: 1 }}>
+                      {l}
+                    </button>
+                  ))}
+                </Segmented>
+              </PanelOpciones>
+            )}
+          </Opciones>
           <Button $variant="secondary" onClick={() => setEnviando(true)} title="Enviar la agenda al profesional por WhatsApp">
             <FaWhatsapp /> Enviar
           </Button>
@@ -297,6 +364,7 @@ export default function Agenda() {
           estados={estados}
           profesionales={profesionales}
           minWidth={vista === 'dia' ? 200 : vista === '4dias' ? 170 : 120}
+          ppm={ALTURAS[altura]}
           onNuevo={(inicial) => setModal({ inicial })}
           onAbrir={(id) => setModal({ turnoId: id })}
         />
