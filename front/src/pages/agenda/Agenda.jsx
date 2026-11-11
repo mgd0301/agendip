@@ -221,6 +221,30 @@ export default function Agenda() {
         }))
       )
         return moverTurno(tu, d, true);
+      return toast.error(errorMsg(err));
+    }
+    await avisarPaciente(tu, d);
+  };
+
+  // Después de reprogramar, ofrece mandarle al paciente el WhatsApp con el nuevo horario.
+  const avisarPaciente = async (tu, d) => {
+    if (!tu.pac_telefono) return;
+    const ok = await confirmar({
+      tipo: 'info',
+      titulo: '¿Avisarle al paciente?',
+      mensaje: `Se abre WhatsApp para enviarle a ${tu.pac_nombre} ${tu.pac_apellido} (${tu.pac_telefono}) el mensaje de reprogramación con el nuevo horario: ${DIAS_CORTOS[diaSemana(d.fecha)]} ${fechaCorta(d.fecha)} a las ${d.hora}.`,
+      aceptar: 'Avisar por WhatsApp',
+      cancelar: 'No avisar',
+    });
+    if (!ok) return;
+    // Se abre la ventana antes del await para que el navegador no la bloquee.
+    const ventana = window.open('', '_blank');
+    try {
+      const { data } = await api.post(`/turnos/${tu.id}/whatsapp`, { tipo: 'reprogramacion' });
+      if (ventana) ventana.location.href = data.link;
+      else window.location.assign(data.link);
+    } catch (err) {
+      ventana?.close();
       toast.error(errorMsg(err));
     }
   };

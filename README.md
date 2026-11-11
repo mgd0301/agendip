@@ -96,7 +96,6 @@ Un turno nuevo debe caer dentro de ese horario y no superponerse con otro turno 
 ## Pendiente para próximas etapas
 
 - Envío real de emails (SMTP con nodemailer) y recordatorios automáticos programados. Las plantillas y la tabla `notificaciones` ya están listas.
-- Arrastrar y soltar turnos en celulares y tablets (en computadora ya funciona con el mouse).
 - Turnos recurrentes (tabla `turnos_series`) y la pantalla de lista de espera (tabla `lista_espera`).
 - Exportación de reportes a Excel o PDF.
 - Varias sedes (tabla `sedes`), reserva online y cobros.

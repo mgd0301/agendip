@@ -8,6 +8,8 @@ const GUTTER = 56;
 // Solo se arrastran turnos que todavía no ocurrieron ni se cancelaron.
 const ARRASTRABLES = ['pendiente', 'confirmado'];
 const UMBRAL_ARRASTRE = 5; // px que hay que mover el mouse para que cuente como arrastre
+const ESPERA_DEDO = 350; // ms manteniendo apretado con el dedo para levantar el turno
+const TOLERANCIA_DEDO = 10; // px que se tolera mover el dedo durante esa espera
 
 const Scroller = styled.div`
   overflow: auto;
@@ -143,6 +145,9 @@ const Bloque = styled.button`
   .hora { color: ${t.muted}; font-variant-numeric: tabular-nums; }
   .chip { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${(p) => p.$estado}; margin-right: 4px; }
   div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 `;
 
 // Vista previa del lugar donde quedará el turno al soltarlo.
@@ -304,12 +309,23 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
   const [arrastre, setArrastre] = useState(null); // { id, col, ini } mientras se arrastra
   const destino = useRef(null);
   const recienSoltado = useRef(false);
+  const conDedo = useRef(false);
+
+  // Mientras se arrastra con el dedo, la grilla no se desplaza. El listener tiene que existir
+  // desde antes de tocar la pantalla y no ser pasivo, si no el navegador ignora el preventDefault.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const bloquear = (e) => conDedo.current && e.preventDefault();
+    el.addEventListener('touchmove', bloquear, { passive: false });
+    return () => el.removeEventListener('touchmove', bloquear);
+  }, []);
 
   useEffect(() => {
     if (!presion) return;
     const { tu } = presion;
     const terminar = () => {
       destino.current = null;
+      conDedo.current = false;
       setPresion(null);
       setArrastre(null);
     };
@@ -350,20 +366,46 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     const tecla = (e) => e.key === 'Escape' && terminar();
     window.addEventListener('pointermove', mover);
     window.addEventListener('pointerup', soltar);
+    window.addEventListener('pointercancel', terminar);
     window.addEventListener('keydown', tecla);
     return () => {
       window.removeEventListener('pointermove', mover);
       window.removeEventListener('pointerup', soltar);
+      window.removeEventListener('pointercancel', terminar);
       window.removeEventListener('keydown', tecla);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presion, cols, desde, ppm]);
 
   const apretar = (tu, a, b) => (e) => {
-    // En pantallas táctiles el dedo desplaza la grilla: ahí se reprograma desde la ficha del turno.
-    if (!onMover || e.button !== 0 || e.pointerType === 'touch' || !ARRASTRABLES.includes(tu.estado)) return;
+    if (!onMover || !ARRASTRABLES.includes(tu.estado)) return;
     const r = e.currentTarget.getBoundingClientRect();
-    setPresion({ tu, x: e.clientX, y: e.clientY, offset: (e.clientY - r.top) / ppm, dur: b - a });
+    const datos = { tu, x: e.clientX, y: e.clientY, offset: (e.clientY - r.top) / ppm, dur: b - a };
+    if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
+      if (e.button === 0) setPresion(datos);
+      return;
+    }
+    // Con el dedo, deslizar desplaza la grilla; mantener apretado un instante levanta el turno.
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const cancelar = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', siMueve);
+      window.removeEventListener('pointerup', cancelar);
+      window.removeEventListener('pointercancel', cancelar);
+    };
+    const siMueve = (ev) => Math.hypot(ev.clientX - x0, ev.clientY - y0) > TOLERANCIA_DEDO && cancelar();
+    const timer = setTimeout(() => {
+      cancelar();
+      conDedo.current = true;
+      destino.current = { nada: true }; // ya cuenta como arrastre, aunque el dedo no se haya movido
+      navigator.vibrate?.(30);
+      setPresion(datos);
+      setArrastre({ id: tu.id, col: -1 });
+    }, ESPERA_DEDO);
+    window.addEventListener('pointermove', siMueve);
+    window.addEventListener('pointerup', cancelar);
+    window.addEventListener('pointercancel', cancelar);
   };
 
   const click = (c) => (e) => {
@@ -431,9 +473,11 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                     left: `calc(${lane * ancho}% + 2px)`,
                     width: `calc(${ancho}% - 4px)`,
                     opacity: arrastre?.id === tu.id ? 0.35 : undefined,
+                    outline: arrastre?.id === tu.id ? `2px dashed ${t.primary}` : undefined,
                     cursor: onMover && ARRASTRABLES.includes(tu.estado) ? 'grab' : undefined,
                   }}
                   onPointerDown={apretar(tu, a, b)}
+                  onContextMenu={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!recienSoltado.current) onAbrir(tu.id);
