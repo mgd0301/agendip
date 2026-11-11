@@ -136,6 +136,31 @@ CREATE TABLE IF NOT EXISTS profesional_prestacion (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ---------------------------------------------------------------------
+--  OBRAS SOCIALES / PREPAGAS y sus planes
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS obras_sociales (
+  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  organizacion_id INT UNSIGNED NOT NULL,
+  nombre          VARCHAR(120) NOT NULL,
+  activo          TINYINT(1)   NOT NULL DEFAULT 1,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_os_nombre (organizacion_id, nombre),
+  CONSTRAINT fk_os_org FOREIGN KEY (organizacion_id)
+    REFERENCES organizaciones (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS obras_sociales_planes (
+  id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  obra_social_id INT UNSIGNED NOT NULL,
+  nombre         VARCHAR(80)  NOT NULL,
+  activo         TINYINT(1)   NOT NULL DEFAULT 1,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_osp_nombre (obra_social_id, nombre),
+  CONSTRAINT fk_osp_os FOREIGN KEY (obra_social_id)
+    REFERENCES obras_sociales (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ---------------------------------------------------------------------
 --  PACIENTES (compartidos entre los profesionales de la organización)
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pacientes (
@@ -149,7 +174,8 @@ CREATE TABLE IF NOT EXISTS pacientes (
   telefono         VARCHAR(50)  NULL,
   email            VARCHAR(150) NULL,
   direccion        VARCHAR(255) NULL,
-  obra_social      VARCHAR(120) NULL,
+  obra_social_id   INT UNSIGNED NULL,
+  plan_id          INT UNSIGNED NULL,
   nro_afiliado     VARCHAR(60)  NULL,
   observaciones    TEXT         NULL,
   activo           TINYINT(1)   NOT NULL DEFAULT 1,
@@ -158,8 +184,14 @@ CREATE TABLE IF NOT EXISTS pacientes (
   UNIQUE KEY uk_pacientes_dni (organizacion_id, dni),
   KEY idx_pac_apellido (organizacion_id, apellido, nombre),
   KEY idx_pac_tel (organizacion_id, telefono),
+  KEY idx_pac_os (obra_social_id),
+  KEY idx_pac_plan (plan_id),
   CONSTRAINT fk_pac_org FOREIGN KEY (organizacion_id)
-    REFERENCES organizaciones (id) ON DELETE CASCADE
+    REFERENCES organizaciones (id) ON DELETE CASCADE,
+  CONSTRAINT fk_pac_os FOREIGN KEY (obra_social_id)
+    REFERENCES obras_sociales (id) ON DELETE SET NULL,
+  CONSTRAINT fk_pac_plan FOREIGN KEY (plan_id)
+    REFERENCES obras_sociales_planes (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- Campos adicionales configurables por organización

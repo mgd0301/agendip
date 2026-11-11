@@ -11,7 +11,7 @@ import { edad, fechaCorta, fechaHora } from '../utils/fechas';
 import { confirmar } from '../utils/confirmar';
 
 const VACIO = {
-  nombre: '', apellido: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '', email: '', direccion: '', obra_social: '', nro_afiliado: '', observaciones: '', campos: {},
+  nombre: '', apellido: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '', email: '', direccion: '', obra_social_id: '', plan_id: '', nro_afiliado: '', observaciones: '', campos: {},
 };
 
 function CampoExtra({ campo, value, onChange }) {
@@ -39,8 +39,10 @@ function CampoExtra({ campo, value, onChange }) {
 }
 
 function PacienteModal({ id, onClose, onSaved }) {
-  const { estados } = useDatos();
+  const { estados, obrasSociales } = useDatos();
   const [form, setForm] = useState(VACIO);
+  // Nombres actuales del paciente, por si su obra social o plan ya fueron dados de baja.
+  const [cobertura, setCobertura] = useState({});
   const [campos, setCampos] = useState([]);
   const [turnos, setTurnos] = useState([]);
   const [tab, setTab] = useState('datos');
@@ -54,6 +56,7 @@ function PacienteModal({ id, onClose, onSaved }) {
       .then(([p, tu]) => {
         const d = p.data;
         setForm(Object.fromEntries(Object.keys(VACIO).map((k) => [k, d[k] ?? (k === 'campos' ? {} : '')])));
+        setCobertura({ obra_social: d.obra_social, plan: d.plan, obra_social_id: d.obra_social_id, plan_id: d.plan_id });
         setTurnos(tu.data);
       })
       .catch((err) => toast.error(errorMsg(err)))
@@ -93,6 +96,11 @@ function PacienteModal({ id, onClose, onSaved }) {
       toast.error(errorMsg(err));
     }
   };
+
+  const os = obrasSociales.find((o) => o.id === Number(form.obra_social_id));
+  const planes = os?.planes || [];
+  const osDadaDeBaja = form.obra_social_id && !os && Number(form.obra_social_id) === cobertura.obra_social_id;
+  const planDadoDeBaja = form.plan_id && !planes.some((p) => p.id === Number(form.plan_id)) && Number(form.plan_id) === cobertura.plan_id;
 
   const proximos = turnos.filter((tu) => tu.estado !== 'cancelado').length;
 
@@ -166,7 +174,26 @@ function PacienteModal({ id, onClose, onSaved }) {
                   <Input value={form.direccion} onChange={set('direccion')} />
                 </Field>
                 <Field label="Obra social / prepaga">
-                  <Input value={form.obra_social} onChange={set('obra_social')} />
+                  <Select value={form.obra_social_id} onChange={(e) => setForm({ ...form, obra_social_id: e.target.value, plan_id: '' })}>
+                    <option value="">Particular (sin obra social)</option>
+                    {obrasSociales.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.nombre}
+                      </option>
+                    ))}
+                    {osDadaDeBaja && <option value={form.obra_social_id}>{cobertura.obra_social} (dada de baja)</option>}
+                  </Select>
+                </Field>
+                <Field label="Plan">
+                  <Select value={form.plan_id} onChange={set('plan_id')} disabled={!planes.length && !planDadoDeBaja}>
+                    <option value="">{!form.obra_social_id ? '—' : planes.length ? 'Sin especificar' : 'Sin planes cargados'}</option>
+                    {planes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                    {planDadoDeBaja && <option value={form.plan_id}>{cobertura.plan} (dado de baja)</option>}
+                  </Select>
                 </Field>
                 <Field label="Nº de afiliado">
                   <Input value={form.nro_afiliado} onChange={set('nro_afiliado')} />
@@ -292,7 +319,10 @@ export default function Pacientes() {
                     <td>{p.dni || '—'}</td>
                     <td>{p.telefono || '—'}</td>
                     <td>{p.email || '—'}</td>
-                    <td>{p.obra_social || '—'}</td>
+                    <td>
+                      {p.obra_social || '—'}
+                      {p.plan && <Muted $size="12px"> · {p.plan}</Muted>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

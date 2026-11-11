@@ -19,6 +19,7 @@ mysql -u root -p < database/02_datos_demo.sql    # opcional: organización de pr
 ```
 
 - `01_estructura.sql` se puede volver a ejecutar sin perder datos (usa `CREATE TABLE IF NOT EXISTS`).
+- `03_migracion_obras_sociales.sql` es solo para bases creadas antes de que existieran las obras sociales con planes. Se ejecuta una vez, después de `01_estructura.sql`, y pasa el texto de obra social de cada paciente a la nueva tabla.
 - Con los datos demo se ingresa con **admin@agendip.com** / **admin123**. Cambie esa contraseña después de entrar.
 - Sin datos demo, use «Crear cuenta» en la pantalla de ingreso: se crea la organización con su usuario administrador.
 

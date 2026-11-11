@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../api';
 
-// Catálogos compartidos por toda la app: profesionales, prestaciones y colores de estados.
+// Catálogos compartidos por toda la app: profesionales, prestaciones, obras sociales y colores de estados.
 const DatosContext = createContext(null);
 
 export const ESTADOS = ['pendiente', 'confirmado', 'atendido', 'ausente', 'cancelado'];
@@ -17,6 +17,7 @@ const ESTADOS_DEFAULT = {
 export function DatosProvider({ children }) {
   const [profesionales, setProfesionales] = useState([]);
   const [prestaciones, setPrestaciones] = useState([]);
+  const [obrasSociales, setObrasSociales] = useState([]);
   const [estados, setEstados] = useState(ESTADOS_DEFAULT);
 
   // Incrementar `version` vuelve a pedir los catálogos al servidor.
@@ -24,10 +25,11 @@ export function DatosProvider({ children }) {
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
-    Promise.all([api.get('/profesionales'), api.get('/prestaciones'), api.get('/config/estados')])
-      .then(([p, s, e]) => {
+    Promise.all([api.get('/profesionales'), api.get('/prestaciones'), api.get('/config/estados'), api.get('/obras-sociales')])
+      .then(([p, s, e, os]) => {
         setProfesionales(p.data);
         setPrestaciones(s.data);
+        setObrasSociales(os.data);
         const map = { ...ESTADOS_DEFAULT };
         for (const x of e.data) map[x.estado] = { etiqueta: x.etiqueta, color: x.color };
         setEstados(map);
@@ -36,8 +38,8 @@ export function DatosProvider({ children }) {
   }, [version]);
 
   const value = useMemo(
-    () => ({ profesionales, prestaciones, estados, recargar }),
-    [profesionales, prestaciones, estados, recargar]
+    () => ({ profesionales, prestaciones, obrasSociales, estados, recargar }),
+    [profesionales, prestaciones, obrasSociales, estados, recargar]
   );
   return <DatosContext.Provider value={value}>{children}</DatosContext.Provider>;
 }

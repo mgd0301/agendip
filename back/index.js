@@ -26,6 +26,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profesionales', auth, require('./routes/profesionales'));
 app.use('/api/prestaciones', auth, require('./routes/prestaciones'));
+app.use('/api/obras-sociales', auth, require('./routes/obrasSociales'));
 app.use('/api/pacientes', auth, require('./routes/pacientes'));
 app.use('/api/excepciones', auth, require('./routes/excepciones'));
 app.use('/api/turnos', auth, require('./routes/turnos'));

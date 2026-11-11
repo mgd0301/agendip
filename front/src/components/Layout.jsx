@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import styled from 'styled-components';
 import {
-  FiCalendar, FiList, FiUsers, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX,
+  FiCalendar, FiList, FiUsers, FiCreditCard, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX,
 } from 'react-icons/fi';
 import { theme as t } from '../styles/GlobalStyle';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,7 @@ const MENU = [
   { to: '/pacientes', label: 'Pacientes', icon: FiUsers },
   { to: '/profesionales', label: 'Profesionales', icon: FiUserCheck },
   { to: '/prestaciones', label: 'Prestaciones', icon: FiTag },
+  { to: '/obras-sociales', label: 'Obras sociales', icon: FiCreditCard },
   { to: '/excepciones', label: 'Feriados y bloqueos', icon: FiSlash },
   { to: '/reportes', label: 'Reportes', icon: FiBarChart2 },
   { to: '/usuarios', label: 'Usuarios', icon: FiShield, roles: ['admin'] },

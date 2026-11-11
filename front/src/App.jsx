@@ -15,6 +15,7 @@ import Excepciones from './pages/Excepciones';
 import Reportes from './pages/Reportes';
 import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
+import ObrasSociales from './pages/ObrasSociales';
 
 function Rutas() {
   const { usuario, cargando } = useAuth();
@@ -30,6 +31,7 @@ function Rutas() {
         <Route path="pacientes" element={<Pacientes />} />
         <Route path="profesionales" element={<Profesionales />} />
         <Route path="prestaciones" element={<Prestaciones />} />
+        <Route path="obras-sociales" element={<ObrasSociales />} />
         <Route path="excepciones" element={<Excepciones />} />
         <Route path="reportes" element={<Reportes />} />
         {admin && <Route path="usuarios" element={<Usuarios />} />}
