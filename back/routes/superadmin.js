@@ -3,6 +3,7 @@ const { query, transaction } = require('../db');
 const { pick, required, bool, notFound, badRequest } = require('../utils/http');
 const { crearDefaults } = require('../services/organizacion');
 const { vincularCuenta } = require('../services/usuarios');
+const { hoy, sumarDias } = require('../utils/fechas');
 
 // Panel del dueño del sistema: todas las organizaciones (se protege en index.js).
 const router = Router();
@@ -16,10 +17,11 @@ router.get('/organizaciones', async (req, res) => {
               (SELECT COUNT(*) FROM membresias m WHERE m.organizacion_id = o.id AND m.activo = 1) AS usuarios,
               (SELECT COUNT(*) FROM pacientes pa WHERE pa.organizacion_id = o.id AND pa.activo = 1) AS pacientes,
               (SELECT COUNT(*) FROM turnos t WHERE t.organizacion_id = o.id
-                  AND t.inicio >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS turnos_mes,
+                  AND t.inicio >= ?) AS turnos_mes,
               (SELECT MAX(u.ultimo_acceso) FROM membresias m JOIN usuarios u ON u.id = m.usuario_id
                 WHERE m.organizacion_id = o.id) AS ultimo_acceso
-         FROM organizaciones o ORDER BY o.nombre`
+         FROM organizaciones o ORDER BY o.nombre`,
+      [sumarDias(hoy(), -30)]
     )
   );
 });

@@ -17,10 +17,12 @@ async function leerToken(req) {
   }
 
   const [cuenta] = await query(
-    'SELECT id, nombre, email, es_superadmin FROM usuarios WHERE id = ? AND activo = 1',
+    'SELECT id, nombre, email, es_superadmin, sesion_version FROM usuarios WHERE id = ? AND activo = 1',
     [payload.id]
   );
   if (!cuenta) throw new HttpError(401, 'Usuario inactivo');
+  // Al cambiar la contraseña sube la versión: los tokens anteriores dejan de valer.
+  if (Number(payload.v || 0) !== Number(cuenta.sesion_version)) throw new HttpError(401, 'La sesión se cerró, vuelva a ingresar');
   cuenta.es_superadmin = Number(cuenta.es_superadmin) === 1;
   return { cuenta, orgId: payload.org || null };
 }

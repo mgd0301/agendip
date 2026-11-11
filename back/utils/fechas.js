@@ -28,9 +28,33 @@ function rangoFechas(desde, hasta) {
   return out;
 }
 
-function ahora() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+// Zona horaria de los consultorios. No depende de la del servidor (en la nube suele ser UTC).
+const ZONA = process.env.APP_TZ || 'America/Argentina/Buenos_Aires';
+const formato = new Intl.DateTimeFormat('en-US', {
+  timeZone: ZONA,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+// Fecha y hora actual en la zona de los consultorios: 'YYYY-MM-DD HH:MM:SS'.
+function ahora(fecha = new Date()) {
+  const p = Object.fromEntries(formato.formatToParts(fecha).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+}
+
+const hoy = () => ahora().slice(0, 10);
+
+// Diferencia con UTC de la zona de los consultorios, en formato MySQL ('-03:00').
+function desfasajeUTC() {
+  const local = new Date(`${ahora().replace(' ', 'T')}Z`);
+  const min = Math.round((local - Date.now()) / 60000);
+  const abs = Math.abs(min);
+  return `${min < 0 ? '-' : '+'}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -40,4 +64,6 @@ const formatoFecha = (fecha) => {
   return `${d}/${m}/${y}`;
 };
 
-module.exports = { pad, esFecha, esHora, aMinutos, aHora, sumarDias, diaSemana, rangoFechas, ahora, DIAS, formatoFecha };
+module.exports = {
+  pad, esFecha, esHora, aMinutos, aHora, sumarDias, diaSemana, rangoFechas, ahora, hoy, desfasajeUTC, ZONA, DIAS, formatoFecha,
+};

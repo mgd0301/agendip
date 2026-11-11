@@ -1,16 +1,31 @@
 require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
 const { pool } = require('./db');
 const { auth, authCuenta, soloSuperadmin, requireRole } = require('./middleware/auth');
 const { sanitize } = require('./utils/http');
+
+const produccion = process.env.NODE_ENV === 'production';
 
 if (!process.env.JWT_SECRET) {
   console.error('Falta definir JWT_SECRET en el archivo .env');
   process.exit(1);
 }
+if (produccion && (process.env.JWT_SECRET.length < 32 || process.env.JWT_SECRET.startsWith('cambiar'))) {
+  console.error('En producción JWT_SECRET debe ser una clave aleatoria de al menos 32 caracteres');
+  process.exit(1);
+}
+if (produccion && (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*')) {
+  console.error('En producción CORS_ORIGIN debe indicar el dominio del frontend (ej. https://agendip.pages.dev)');
+  process.exit(1);
+}
 
 const app = express();
+// Railway (y cualquier hosting con proxy) entrega la IP real del cliente en X-Forwarded-For.
+if (process.env.TRUST_PROXY !== '0') app.set('trust proxy', Number(process.env.TRUST_PROXY) || 1);
+app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN === '*' || !process.env.CORS_ORIGIN ? true : process.env.CORS_ORIGIN.split(',') }));
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
@@ -22,6 +37,30 @@ app.get('/api/health', async (req, res) => {
   await pool.query('SELECT 1');
   res.json({ ok: true });
 });
+
+// Límite de intentos contra la adivinación de contraseñas: por IP y, en el login, también por email.
+const limite = (opciones) =>
+  rateLimit({
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({ error: 'Demasiados intentos. Espere unos minutos y vuelva a probar.' }),
+    ...opciones,
+  });
+const minutos = (n) => n * 60 * 1000;
+app.use('/api/auth/login', limite({ windowMs: minutos(15), limit: 20 }));
+app.use(
+  '/api/auth/login',
+  limite({
+    windowMs: minutos(15),
+    limit: 10,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => `email:${String(req.body?.email || '').trim().toLowerCase()}`,
+  })
+);
+app.use(['/api/auth/recuperar', '/api/auth/restablecer'], limite({ windowMs: minutos(60), limit: 10 }));
+app.use('/api/auth/registro', limite({ windowMs: minutos(60), limit: 5 }));
+app.use(['/api/auth/password', '/api/auth/perfil'], limite({ windowMs: minutos(15), limit: 10 }));
+app.use('/api', limite({ windowMs: minutos(1), limit: 300 }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profesionales', auth, require('./routes/profesionales'));

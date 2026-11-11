@@ -5,38 +5,7 @@ import api, { errorMsg } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Button, Field, Input, Select } from '../components/ui';
 import { theme as t } from '../styles/GlobalStyle';
-
-const Fondo = styled.div`
-  min-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  background: linear-gradient(160deg, #0f1d3a 0%, #1d4ed8 100%);
-`;
-
-const Caja = styled.form`
-  width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 32px 28px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  h1 { font-size: 30px; text-align: center; letter-spacing: -0.03em; }
-  h1 span { color: ${t.primary}; }
-  p { text-align: center; color: ${t.muted}; margin: -8px 0 6px; }
-`;
-
-const Link = styled.button.attrs({ type: 'button' })`
-  background: none;
-  border: none;
-  color: ${t.primary};
-  cursor: pointer;
-  font-weight: 500;
-`;
+import { Caja, Fondo, Link } from '../components/Acceso';
 
 const Opcion = styled.button.attrs({ type: 'button' })`
   display: flex;
@@ -73,6 +42,11 @@ export default function Login() {
     e.preventDefault();
     setEnviando(true);
     try {
+      if (modo === 'recuperar') {
+        await api.post('/auth/recuperar', { email: form.email });
+        setModo('enviado');
+        return;
+      }
       const { data } = await api.post(modo === 'login' ? '/auth/login' : '/auth/registro', form);
       if (data.elegir) setEleccion(data);
       else iniciar(data);
@@ -133,7 +107,16 @@ export default function Login() {
         <h1>
           Agend<span>ip</span>
         </h1>
-        <p>{modo === 'login' ? 'Gestión de agendas y turnos' : 'Creá la cuenta de tu consultorio'}</p>
+        <p>
+          {
+            {
+              login: 'Gestión de agendas y turnos',
+              registro: 'Creá la cuenta de tu consultorio',
+              recuperar: 'Te enviamos por email un link para elegir una contraseña nueva',
+              enviado: `Si ${form.email} tiene cuenta en Agendip, te llegará un email con el link. Revisá también la carpeta de spam.`,
+            }[modo]
+          }
+        </p>
         {modo === 'registro' && (
           <>
             <Field label="Nombre del consultorio o centro">
@@ -151,9 +134,12 @@ export default function Login() {
             </Field>
           </>
         )}
-        <Field label="Email">
-          <Input type="email" autoComplete="username" value={form.email} onChange={set('email')} required />
-        </Field>
+        {modo !== 'enviado' && (
+          <Field label="Email">
+            <Input type="email" autoComplete="username" value={form.email} onChange={set('email')} required />
+          </Field>
+        )}
+        {(modo === 'login' || modo === 'registro') && (
         <Field label="Contraseña">
           <Input
             type="password"
@@ -164,11 +150,17 @@ export default function Login() {
             required
           />
         </Field>
-        <Button type="submit" disabled={enviando} style={{ marginTop: 6 }}>
-          {enviando ? 'Procesando…' : modo === 'login' ? 'Ingresar' : 'Crear cuenta'}
-        </Button>
+        )}
+        {modo !== 'enviado' && (
+          <Button type="submit" disabled={enviando} style={{ marginTop: 6 }}>
+            {enviando
+              ? 'Procesando…'
+              : { login: 'Ingresar', registro: 'Crear cuenta', recuperar: 'Enviar link' }[modo]}
+          </Button>
+        )}
+        {modo === 'login' && <Link onClick={() => setModo('recuperar')}>¿Olvidaste tu contraseña?</Link>}
         <Link onClick={() => setModo(modo === 'login' ? 'registro' : 'login')}>
-          {modo === 'login' ? '¿No tenés cuenta? Registrá tu consultorio' : 'Ya tengo cuenta, ingresar'}
+          {modo === 'login' ? '¿No tenés cuenta? Registrá tu consultorio' : 'Volver a ingresar'}
         </Link>
       </Caja>
     </Fondo>

@@ -29,12 +29,16 @@ export function AuthProvider({ children }) {
     window.location.assign(organizacionId ? '/' : '/superadmin');
   }, []);
 
+  // Mi cuenta: datos actualizados del perfil y, al cambiar la contraseña, el token nuevo.
+  const actualizar = useCallback((datos) => setUsuario(datos), []);
+  const guardarToken = useCallback((token) => localStorage.setItem('agendip_token', token), []);
+
   const salir = useCallback(() => {
     localStorage.removeItem('agendip_token');
     setUsuario(null);
   }, []);
 
-  return <AuthContext.Provider value={{ usuario, cargando, iniciar, cambiarOrganizacion, salir }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ usuario, cargando, iniciar, cambiarOrganizacion, actualizar, guardarToken, salir }}>{children}</AuthContext.Provider>;
 }
 
  

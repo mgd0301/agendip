@@ -1,16 +1,19 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query, transaction } = require('../db');
 const { authCuenta, membresia } = require('../middleware/auth');
-const { HttpError, required, badRequest } = require('../utils/http');
+const { HttpError, required, badRequest, conflict } = require('../utils/http');
 const { ahora } = require('../utils/fechas');
 const { crearDefaults } = require('../services/organizacion');
+const { enviarMail } = require('../services/mail');
 
 const router = Router();
 
-const firmar = (userId, orgId) =>
-  jwt.sign({ id: userId, org: orgId || null }, process.env.JWT_SECRET, {
+// v = versión de sesión de la cuenta: al cambiar la contraseña sube y los tokens viejos dejan de valer.
+const firmar = (cuenta, orgId) =>
+  jwt.sign({ id: cuenta.id, org: orgId || null, v: Number(cuenta.sesion_version) || 0 }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES || '12h',
   });
 
@@ -48,7 +51,7 @@ async function perfil(cuenta, orgId) {
 
 async function sesion(cuenta, orgId) {
   if (orgId) await query('UPDATE usuarios SET ultima_organizacion_id = ? WHERE id = ?', [orgId, cuenta.id]);
-  return { token: firmar(cuenta.id, orgId), usuario: await perfil(cuenta, orgId) };
+  return { token: firmar(cuenta, orgId), usuario: await perfil(cuenta, orgId) };
 }
 
 // Si la cuenta trabaja en varias organizaciones y no indica en cuál entrar, se devuelve
@@ -61,7 +64,13 @@ router.post('/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(String(req.body.password), user.password_hash))) {
     throw new HttpError(401, 'Email o contraseña incorrectos');
   }
-  const cuenta = { id: user.id, nombre: user.nombre, email: user.email, es_superadmin: Number(user.es_superadmin) === 1 };
+  const cuenta = {
+    id: user.id,
+    nombre: user.nombre,
+    email: user.email,
+    es_superadmin: Number(user.es_superadmin) === 1,
+    sesion_version: user.sesion_version,
+  };
   const orgs = await organizacionesDe(user.id);
   if (!orgs.length && !cuenta.es_superadmin) throw new HttpError(401, 'Su usuario no tiene acceso a ningún consultorio activo');
 
@@ -116,7 +125,7 @@ router.post('/registro', async (req, res) => {
     );
     return { userId: u.insertId, orgId: org.insertId };
   });
-  const cuenta = { id: userId, nombre: req.body.nombre, email, es_superadmin: false };
+  const cuenta = { id: userId, nombre: req.body.nombre, email, es_superadmin: false, sesion_version: 0 };
   res.status(201).json(await sesion(cuenta, orgId));
 });
 
@@ -127,12 +136,94 @@ router.get('/me', authCuenta, async (req, res) => {
   res.json(usuario);
 });
 
+const validarPassword = (p) => {
+  if (String(p || '').length < 6) throw badRequest('La contraseña debe tener al menos 6 caracteres');
+};
+
+async function verificarPassword(userId, password) {
+  const [u] = await query('SELECT password_hash FROM usuarios WHERE id = ?', [userId]);
+  if (!password || !(await bcrypt.compare(String(password), u.password_hash))) {
+    throw badRequest('La contraseña actual no es correcta');
+  }
+}
+
+// Cambia la contraseña y cierra todas las sesiones abiertas de la cuenta.
+async function cambiarPassword(userId, nueva) {
+  await query('UPDATE usuarios SET password_hash = ?, sesion_version = sesion_version + 1 WHERE id = ?', [
+    await bcrypt.hash(String(nueva), 10),
+    userId,
+  ]);
+  const [u] = await query('SELECT id, sesion_version FROM usuarios WHERE id = ?', [userId]);
+  return u;
+}
+
+// Mi cuenta: nombre y email. Cambiar el email (que es el usuario de ingreso) pide la contraseña.
+router.put('/perfil', authCuenta, async (req, res) => {
+  required(req.body, ['nombre', 'email']);
+  const email = String(req.body.email).trim().toLowerCase();
+  if (email !== req.cuenta.email) {
+    await verificarPassword(req.cuenta.id, req.body.password_actual);
+    const [dup] = await query('SELECT id FROM usuarios WHERE email = ? AND id <> ?', [email, req.cuenta.id]);
+    if (dup) throw conflict('Ya existe una cuenta con ese email');
+  }
+  await query('UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?', [String(req.body.nombre).trim(), email, req.cuenta.id]);
+  res.json(await perfil({ ...req.cuenta, nombre: String(req.body.nombre).trim(), email }, req.tokenOrg));
+});
+
+// Devuelve un token nuevo para esta sesión; las demás (otros dispositivos) quedan cerradas.
 router.put('/password', authCuenta, async (req, res) => {
   required(req.body, ['actual', 'nueva']);
-  if (String(req.body.nueva).length < 6) throw badRequest('La contraseña debe tener al menos 6 caracteres');
-  const [u] = await query('SELECT password_hash FROM usuarios WHERE id = ?', [req.cuenta.id]);
-  if (!(await bcrypt.compare(String(req.body.actual), u.password_hash))) throw badRequest('La contraseña actual no es correcta');
-  await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [await bcrypt.hash(String(req.body.nueva), 10), req.cuenta.id]);
+  validarPassword(req.body.nueva);
+  await verificarPassword(req.cuenta.id, req.body.actual);
+  const u = await cambiarPassword(req.cuenta.id, req.body.nueva);
+  res.json({ token: firmar(u, req.tokenOrg) });
+});
+
+const hashToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+const MINUTOS_RECUPERACION = 60;
+
+// Olvidé mi contraseña: envía por email un link para elegir una nueva.
+// Responde lo mismo exista o no la cuenta, para no revelar qué emails están registrados.
+router.post('/recuperar', async (req, res) => {
+  required(req.body, ['email']);
+  const [u] = await query('SELECT id, nombre, email FROM usuarios WHERE email = ? AND activo = 1', [
+    String(req.body.email).trim().toLowerCase(),
+  ]);
+  if (u) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expira = ahora(new Date(Date.now() + MINUTOS_RECUPERACION * 60000));
+    // Un pedido nuevo anula los anteriores que no se usaron.
+    await query('UPDATE recuperaciones_password SET usado_en = ? WHERE usuario_id = ? AND usado_en IS NULL', [ahora(), u.id]);
+    await query('INSERT INTO recuperaciones_password (usuario_id, token_hash, expira) VALUES (?, ?, ?)', [u.id, hashToken(token), expira]);
+    const base = (process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+    try {
+      await enviarMail({
+        para: u.email,
+        asunto: 'Recuperar tu contraseña de Agendip',
+        texto:
+          `Hola ${u.nombre}:\n\n` +
+          `Para elegir una contraseña nueva entrá a este link (vale por ${MINUTOS_RECUPERACION} minutos):\n\n` +
+          `${base}/restablecer?token=${token}\n\n` +
+          'Si no lo pediste, ignorá este email: tu contraseña no cambia.\n\nAgendip',
+      });
+    } catch (err) {
+      console.error('No se pudo enviar el email de recuperación:', err.message);
+      throw new HttpError(502, 'No se pudo enviar el email. Intente de nuevo en unos minutos.');
+    }
+  }
+  res.json({ ok: true });
+});
+
+router.post('/restablecer', async (req, res) => {
+  required(req.body, ['token', 'password']);
+  validarPassword(req.body.password);
+  const [r] = await query(
+    'SELECT id, usuario_id FROM recuperaciones_password WHERE token_hash = ? AND usado_en IS NULL AND expira > ?',
+    [hashToken(req.body.token), ahora()]
+  );
+  if (!r) throw badRequest('El link no es válido o ya venció. Pida uno nuevo.');
+  await query('UPDATE recuperaciones_password SET usado_en = ? WHERE id = ?', [ahora(), r.id]);
+  await cambiarPassword(r.usuario_id, req.body.password);
   res.json({ ok: true });
 });
 

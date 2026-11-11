@@ -88,11 +88,28 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash          VARCHAR(100) NOT NULL,
   es_superadmin          TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'Administra todas las organizaciones (dueño del sistema)',
   ultima_organizacion_id INT UNSIGNED NULL COMMENT 'Organización en la que entró la última vez',
+  sesion_version         INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Se incrementa al cambiar la contraseña: invalida las sesiones abiertas',
   activo                 TINYINT(1)   NOT NULL DEFAULT 1,
   ultimo_acceso          DATETIME     NULL,
   creado_en              TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_usuarios_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- Pedidos de "olvidé mi contraseña". Se guarda el hash del código enviado por email,
+-- nunca el código: quien lea la base no puede usarlo.
+CREATE TABLE IF NOT EXISTS recuperaciones_password (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuario_id  INT UNSIGNED NOT NULL,
+  token_hash  CHAR(64)     NOT NULL,
+  expira      DATETIME     NOT NULL,
+  usado_en    DATETIME     NULL,
+  creado_en   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_recup_token (token_hash),
+  KEY idx_recup_usuario (usuario_id),
+  CONSTRAINT fk_recup_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- Acceso de un usuario a una organización, con su rol en ella.

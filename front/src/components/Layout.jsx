@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import styled from 'styled-components';
 import {
-  FiCalendar, FiList, FiUsers, FiCreditCard, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX, FiGlobe,
+  FiCalendar, FiList, FiUsers, FiCreditCard, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX, FiGlobe, FiUser,
 } from 'react-icons/fi';
 import { theme as t } from '../styles/GlobalStyle';
 import { useAuth } from '../context/AuthContext';
@@ -103,7 +103,7 @@ const UserBox = styled.div`
   font-size: 13px;
   div { color: #fff; font-weight: 500; }
   small { color: #94a3b8; }
-  button {
+  button, a {
     margin-top: 10px;
     display: flex;
     align-items: center;
@@ -114,7 +114,8 @@ const UserBox = styled.div`
     cursor: pointer;
     padding: 0;
   }
-  button:hover { color: #fff; }
+  button:hover, a:hover { color: #fff; }
+  a.active { color: #fff; }
 `;
 
 const Main = styled.main`
@@ -228,6 +229,9 @@ export default function Layout() {
           <UserBox>
             <div>{usuario.nombre}</div>
             <small>{org ? ROL[usuario.rol] : 'Superadministrador'}</small>
+            <NavLink to="/mi-cuenta" onClick={() => setAbierto(false)}>
+              <FiUser /> Mi cuenta
+            </NavLink>
             <button onClick={salir}>
               <FiLogOut /> Cerrar sesión
             </button>

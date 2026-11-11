@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GlobalStyle } from './styles/GlobalStyle';
@@ -17,9 +17,14 @@ import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
 import ObrasSociales from './pages/ObrasSociales';
 import Superadmin from './pages/Superadmin';
+import MiCuenta from './pages/MiCuenta';
+import Restablecer from './pages/Restablecer';
 
 function Rutas() {
   const { usuario, cargando } = useAuth();
+  const { pathname } = useLocation();
+  // El link del email de recuperación funciona con o sin sesión iniciada.
+  if (pathname === '/restablecer') return <Restablecer />;
   if (cargando) return <Spinner />;
   if (!usuario) return <Login />;
   const admin = usuario.rol === 'admin';
@@ -30,6 +35,7 @@ function Rutas() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="superadmin" element={<Superadmin />} />
+          <Route path="mi-cuenta" element={<MiCuenta />} />
           <Route path="*" element={<Navigate to="/superadmin" replace />} />
         </Route>
       </Routes>
@@ -50,6 +56,7 @@ function Rutas() {
         {admin && <Route path="usuarios" element={<Usuarios />} />}
         {admin && <Route path="configuracion" element={<Configuracion />} />}
         {usuario.es_superadmin && <Route path="superadmin" element={<Superadmin />} />}
+        <Route path="mi-cuenta" element={<MiCuenta />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
