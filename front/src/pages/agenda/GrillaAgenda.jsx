@@ -5,6 +5,9 @@ import { theme as t } from '../../styles/GlobalStyle';
 import { ALTURAS } from './alturas';
 
 const GUTTER = 56;
+// Solo se arrastran turnos que todavía no ocurrieron ni se cancelaron.
+const ARRASTRABLES = ['pendiente', 'confirmado'];
+const UMBRAL_ARRASTRE = 5; // px que hay que mover el mouse para que cuente como arrastre
 
 const Scroller = styled.div`
   overflow: auto;
@@ -19,6 +22,7 @@ const GridWrap = styled.div`
   display: grid;
   grid-template-columns: ${GUTTER}px repeat(${(p) => p.$cols}, minmax(${(p) => p.$min}px, 1fr));
   min-width: fit-content;
+  ${(p) => p.$arrastrando && 'user-select: none; cursor: grabbing; * { cursor: grabbing !important; }'}
 `;
 
 const HeadCell = styled.div`
@@ -141,6 +145,25 @@ const Bloque = styled.button`
   div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 `;
 
+// Vista previa del lugar donde quedará el turno al soltarlo.
+const Fantasma = styled.div`
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 7;
+  pointer-events: none;
+  border: 2px dashed ${t.primary};
+  border-radius: 6px;
+  background: ${t.primarySoft};
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: ${t.primary};
+  overflow: hidden;
+  div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+`;
+
 const Ahora = styled.div`
   position: absolute;
   left: 0;
@@ -211,7 +234,7 @@ function useMinutoActual() {
  * Grilla horaria para vistas de día y semana.
  * columnas: [{ key, fecha, titulo, subtitulo, color, profIds: [] }]
  */
-export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, minWidth = 140, ppm = ALTURAS.normal }) {
+export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, onMover, minWidth = 140, ppm = ALTURAS.normal }) {
   const scrollRef = useRef(null);
   const minutoActual = useMinutoActual();
   const fechaHoy = hoy();
@@ -269,15 +292,86 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnas.map((c) => c.key).join(), desde, ppm]);
 
+  // Ajusta un minuto a la grilla del profesional; dentro de una franja, alineado al inicio de esa franja.
+  const ajustar = (c, min, pid, redondear = Math.floor) => {
+    const paso = pid ? pasoProf[pid] : 15;
+    const fr = c.franjas.find(([x, yy]) => min >= x && min < yy);
+    return fr ? fr[0] + redondear((min - fr[0]) / paso) * paso : redondear(min / paso) * paso;
+  };
+
+  // ----- Arrastrar y soltar para reprogramar -----
+  const [presion, setPresion] = useState(null); // { tu, x, y, offset, dur } desde que se aprieta el mouse
+  const [arrastre, setArrastre] = useState(null); // { id, col, ini } mientras se arrastra
+  const destino = useRef(null);
+  const recienSoltado = useRef(false);
+
+  useEffect(() => {
+    if (!presion) return;
+    const { tu } = presion;
+    const terminar = () => {
+      destino.current = null;
+      setPresion(null);
+      setArrastre(null);
+    };
+    const mover = (e) => {
+      if (!destino.current && Math.hypot(e.clientX - presion.x, e.clientY - presion.y) < UMBRAL_ARRASTRE) return;
+      // Cerca del borde de la grilla, se desplaza sola.
+      const sc = scrollRef.current;
+      const r = sc.getBoundingClientRect();
+      if (e.clientY > r.bottom - 40) sc.scrollTop += 14;
+      else if (e.clientY < r.top + 70) sc.scrollTop -= 14;
+
+      const colEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-col]');
+      const i = colEl ? Number(colEl.dataset.col) : -1;
+      const c = cols[i];
+      // Columna de un profesional: pasa a ese profesional. Columna de varios: se mantiene el del turno.
+      const pid = !c ? null : c.profIds.length === 1 ? c.profIds[0] : c.profIds.includes(tu.profesional_id) ? tu.profesional_id : null;
+      if (!pid) {
+        destino.current = { nada: true };
+        setArrastre({ id: tu.id, col: -1 });
+        return;
+      }
+      const min = desde + (e.clientY - colEl.getBoundingClientRect().top) / ppm - presion.offset;
+      const ini = Math.min(Math.max(desde, ajustar(c, min, pid, Math.round)), 1440 - presion.dur);
+      destino.current = { fecha: c.fecha, hora: aHora(ini), profesional_id: pid };
+      setArrastre({ id: tu.id, col: i, ini });
+    };
+    const soltar = () => {
+      const d = destino.current;
+      if (d) {
+        // El click que el navegador dispara al soltar no debe abrir el turno ni crear uno nuevo.
+        recienSoltado.current = true;
+        setTimeout(() => (recienSoltado.current = false), 0);
+        const igual = d.fecha === tu.inicio.slice(0, 10) && d.hora === tu.inicio.slice(11, 16) && d.profesional_id === tu.profesional_id;
+        if (!d.nada && !igual) onMover(tu, d);
+      }
+      terminar();
+    };
+    const tecla = (e) => e.key === 'Escape' && terminar();
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+    window.addEventListener('keydown', tecla);
+    return () => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+      window.removeEventListener('keydown', tecla);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presion, cols, desde, ppm]);
+
+  const apretar = (tu, a, b) => (e) => {
+    // En pantallas táctiles el dedo desplaza la grilla: ahí se reprograma desde la ficha del turno.
+    if (!onMover || e.button !== 0 || e.pointerType === 'touch' || !ARRASTRABLES.includes(tu.estado)) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setPresion({ tu, x: e.clientX, y: e.clientY, offset: (e.clientY - r.top) / ppm, dur: b - a });
+  };
+
   const click = (c) => (e) => {
+    if (recienSoltado.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const min = desde + (e.clientY - rect.top) / ppm;
-    const paso = c.profIds.length === 1 ? pasoProf[c.profIds[0]] : 15;
-    const snap = Math.floor(min / paso) * paso;
-    // Si cae dentro de una franja, alinear a la grilla de esa franja.
-    const fr = c.franjas.find(([x, yy]) => min >= x && min < yy);
-    const hora = fr ? fr[0] + Math.floor((min - fr[0]) / paso) * paso : snap;
-    onNuevo({ fecha: c.fecha, hora: aHora(hora), profesional_id: c.profIds.length === 1 ? c.profIds[0] : undefined });
+    const pid = c.profIds.length === 1 ? c.profIds[0] : undefined;
+    onNuevo({ fecha: c.fecha, hora: aHora(ajustar(c, min, pid)), profesional_id: pid });
   };
 
   const horas = [];
@@ -285,7 +379,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
 
   return (
     <Scroller ref={scrollRef}>
-      <GridWrap $cols={cols.length} $min={minWidth}>
+      <GridWrap $cols={cols.length} $min={minWidth} $arrastrando={!!arrastre}>
         <HeadCell $corner />
         {cols.map((c) => (
           <HeadCell key={c.key} $hoy={c.fecha === fechaHoy}>
@@ -305,8 +399,8 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
           ))}
         </Gutter>
 
-        {cols.map((c) => (
-          <Columna key={c.key} $h={alto} onClick={click(c)}>
+        {cols.map((c, i) => (
+          <Columna key={c.key} $h={alto} onClick={click(c)} data-col={i}>
             {c.franjas.map(([a, b], i) => (
               <Franja key={i} style={{ top: y(a), height: (b - a) * ppm }} />
             ))}
@@ -330,10 +424,19 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                   $prof={colorProf[tu.profesional_id] || tu.prof_color}
                   $estado={est.color || '#64748b'}
                   $apagado={['atendido', 'ausente', 'cancelado'].includes(tu.estado)}
-                  style={{ top: y(a) + 1, height: h, padding: h < 24 ? '1px 6px' : undefined, left: `calc(${lane * ancho}% + 2px)`, width: `calc(${ancho}% - 4px)` }}
+                  style={{
+                    top: y(a) + 1,
+                    height: h,
+                    padding: h < 24 ? '1px 6px' : undefined,
+                    left: `calc(${lane * ancho}% + 2px)`,
+                    width: `calc(${ancho}% - 4px)`,
+                    opacity: arrastre?.id === tu.id ? 0.35 : undefined,
+                    cursor: onMover && ARRASTRABLES.includes(tu.estado) ? 'grab' : undefined,
+                  }}
+                  onPointerDown={apretar(tu, a, b)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAbrir(tu.id);
+                    if (!recienSoltado.current) onAbrir(tu.id);
                   }}
                   title={`${tu.inicio.slice(11, 16)}–${tu.fin.slice(11, 16)} · ${tu.pac_apellido}, ${tu.pac_nombre}${tu.prestacion ? ` · ${tu.prestacion}` : ''} · ${est.etiqueta || tu.estado}${tu.sobreturno ? ' · Sobreturno' : ''}`}
                 >
@@ -365,6 +468,16 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                 </Bloque>
               );
             })}
+            {arrastre?.col === i && presion && (
+              <Fantasma style={{ top: y(arrastre.ini) + 1, height: Math.max(presion.dur * ppm - 2, 16) }}>
+                <div>
+                  <strong>
+                    {aHora(arrastre.ini)}–{aHora(arrastre.ini + presion.dur)}
+                  </strong>{' '}
+                  {presion.tu.pac_apellido}
+                </div>
+              </Fantasma>
+            )}
             {c.fecha === fechaHoy && minutoActual >= desde && minutoActual <= hasta && <Ahora style={{ top: y(minutoActual) }} />}
           </Columna>
         ))}

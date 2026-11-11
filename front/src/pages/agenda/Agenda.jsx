@@ -7,13 +7,14 @@ import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
 import { Button, IconButton, Row, Segmented } from '../../components/ui';
-import { DIAS_CORTOS, MESES, diaSemana, fechaLarga, finMes, hoy, inicioMes, inicioSemana, rango, sumarDias, sumarMeses } from '../../utils/fechas';
+import { DIAS_CORTOS, MESES, ahora, diaSemana, fechaCorta, fechaLarga, finMes, hoy, inicioMes, inicioSemana, rango, sumarDias, sumarMeses } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
 import GrillaAgenda from './GrillaAgenda';
 import { ALTURAS } from './alturas';
 import VistaMes from './VistaMes';
 import TurnoModal from './TurnoModal';
 import EnviarAgendaModal from '../../components/EnviarAgendaModal';
+import { confirmar } from '../../utils/confirmar';
 
 const Wrap = styled.div`
   padding: 16px 20px;
@@ -181,6 +182,49 @@ export default function Agenda() {
   // Botón recargar: el ícono gira hasta que llegan los datos (al menos un instante, para que se note).
   const [girando, setGirando] = useState(false);
   const inicioRecarga = useRef(0);
+  // Turno soltado en otro horario de la grilla: se confirma y se reprograma.
+  const moverTurno = async (tu, d, sobreturno = false) => {
+    const cuando = (fecha, hora) => `${DIAS_CORTOS[diaSemana(fecha)]} ${fechaCorta(fecha)} a las ${hora}`;
+    const nombreProf = (id) => {
+      const p = profesionales.find((x) => x.id === id);
+      return p ? `${p.nombre} ${p.apellido}` : '';
+    };
+    const cambiaProf = d.profesional_id !== tu.profesional_id;
+    const pasado = `${d.fecha} ${d.hora}` < ahora();
+    if (!sobreturno) {
+      const ok = await confirmar({
+        tipo: pasado ? 'aviso' : 'info',
+        titulo: '¿Mover el turno?',
+        mensaje: [
+          `${tu.pac_apellido}, ${tu.pac_nombre}`,
+          '',
+          `De: ${cuando(tu.inicio.slice(0, 10), tu.inicio.slice(11, 16))}${cambiaProf ? ` con ${nombreProf(tu.profesional_id)}` : ''}`,
+          `A: ${cuando(d.fecha, d.hora)}${cambiaProf ? ` con ${nombreProf(d.profesional_id)}` : ''}`,
+          ...(pasado ? ['', 'Atención: el nuevo horario ya pasó.'] : []),
+        ].join('\n'),
+        aceptar: 'Mover',
+      });
+      if (!ok) return;
+    }
+    try {
+      await api.put(`/turnos/${tu.id}`, { ...d, sobreturno });
+      toast.success('Turno reprogramado');
+      cargar();
+    } catch (err) {
+      if (
+        err.response?.data?.code === 'REQUIERE_SOBRETURNO' &&
+        (await confirmar({
+          tipo: 'aviso',
+          titulo: '¿Mover como sobreturno?',
+          mensaje: `${errorMsg(err)}.\n\nPuede moverlo igualmente: quedará marcado como sobreturno.`,
+          aceptar: 'Mover como sobreturno',
+        }))
+      )
+        return moverTurno(tu, d, true);
+      toast.error(errorMsg(err));
+    }
+  };
+
   const recargar = () => {
     inicioRecarga.current = Date.now();
     setGirando(true);
@@ -387,6 +431,7 @@ export default function Agenda() {
           ppm={ALTURAS[altura]}
           onNuevo={(inicial) => setModal({ inicial })}
           onAbrir={(id) => setModal({ turnoId: id })}
+          onMover={moverTurno}
         />
       )}
 
