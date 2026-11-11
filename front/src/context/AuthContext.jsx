@@ -21,12 +21,20 @@ export function AuthProvider({ children }) {
     setUsuario(usuario);
   }, []);
 
+  // Entra a otra organización (o al panel de superadmin con id 0). Se recarga la app
+  // para que ningún dato ni preferencia de la organización anterior quede en pantalla.
+  const cambiarOrganizacion = useCallback(async (organizacionId) => {
+    const { data } = await api.post('/auth/cambiar-organizacion', { organizacion_id: organizacionId });
+    localStorage.setItem('agendip_token', data.token);
+    window.location.assign(organizacionId ? '/' : '/superadmin');
+  }, []);
+
   const salir = useCallback(() => {
     localStorage.removeItem('agendip_token');
     setUsuario(null);
   }, []);
 
-  return <AuthContext.Provider value={{ usuario, cargando, iniciar, salir }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ usuario, cargando, iniciar, cambiarOrganizacion, salir }}>{children}</AuthContext.Provider>;
 }
 
  

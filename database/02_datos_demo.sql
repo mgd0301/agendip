@@ -17,9 +17,12 @@ VALUES
   (1, 1, 'Laura', 'Gómez', 'Clínica médica', 'MP 12345', '#2563eb', 30),
   (2, 1, 'Martín', 'Pérez', 'Kinesiología', 'MP 67890', '#059669', 30);
 
-INSERT IGNORE INTO usuarios (id, organizacion_id, nombre, email, password_hash, rol, puede_sobreturno)
-VALUES (1, 1, 'Administrador', 'admin@agendip.com',
-        '$2b$10$91eXZ.h3CdDbtKBdUH.a2O85WHWeObhbarME1zFoBxLu.jlqxIEyu', 'admin', 1);
+INSERT IGNORE INTO usuarios (id, nombre, email, password_hash)
+VALUES (1, 'Administrador', 'admin@agendip.com',
+        '$2b$10$91eXZ.h3CdDbtKBdUH.a2O85WHWeObhbarME1zFoBxLu.jlqxIEyu');
+
+INSERT IGNORE INTO membresias (usuario_id, organizacion_id, rol, puede_sobreturno)
+VALUES (1, 1, 'admin', 1);
 
 INSERT IGNORE INTO prestaciones (id, organizacion_id, nombre, duracion_min, color)
 VALUES

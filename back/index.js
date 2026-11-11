@@ -2,7 +2,7 @@ require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const { pool } = require('./db');
-const { auth, requireRole } = require('./middleware/auth');
+const { auth, authCuenta, soloSuperadmin, requireRole } = require('./middleware/auth');
 const { sanitize } = require('./utils/http');
 
 if (!process.env.JWT_SECRET) {
@@ -33,6 +33,7 @@ app.use('/api/turnos', auth, require('./routes/turnos'));
 app.use('/api/usuarios', auth, requireRole('admin'), require('./routes/usuarios'));
 app.use('/api/config', auth, require('./routes/config'));
 app.use('/api/reportes', auth, require('./routes/reportes'));
+app.use('/api/superadmin', authCuenta, soloSuperadmin, require('./routes/superadmin'));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 

@@ -82,24 +82,39 @@ CREATE TABLE IF NOT EXISTS profesionales (
 --  rol: admin | recepcion | profesional
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuarios (
+  id                     INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  nombre                 VARCHAR(150) NOT NULL,
+  email                  VARCHAR(150) NOT NULL,
+  password_hash          VARCHAR(100) NOT NULL,
+  es_superadmin          TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'Administra todas las organizaciones (dueño del sistema)',
+  ultima_organizacion_id INT UNSIGNED NULL COMMENT 'Organización en la que entró la última vez',
+  activo                 TINYINT(1)   NOT NULL DEFAULT 1,
+  ultimo_acceso          DATETIME     NULL,
+  creado_en              TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_usuarios_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- Acceso de un usuario a una organización, con su rol en ella.
+-- Una misma persona puede trabajar en varias organizaciones con roles distintos.
+CREATE TABLE IF NOT EXISTS membresias (
   id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuario_id       INT UNSIGNED NOT NULL,
   organizacion_id  INT UNSIGNED NOT NULL,
-  nombre           VARCHAR(150) NOT NULL,
-  email            VARCHAR(150) NOT NULL,
-  password_hash    VARCHAR(100) NOT NULL,
   rol              ENUM('admin','recepcion','profesional') NOT NULL DEFAULT 'recepcion',
   profesional_id   INT UNSIGNED NULL COMMENT 'Profesional vinculado (rol profesional)',
   puede_sobreturno TINYINT(1)   NOT NULL DEFAULT 0,
   activo           TINYINT(1)   NOT NULL DEFAULT 1,
-  ultimo_acceso    DATETIME     NULL,
   creado_en        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_usuarios_email (email),
-  KEY idx_usuarios_org (organizacion_id),
-  KEY idx_usuarios_prof (profesional_id),
-  CONSTRAINT fk_usuarios_org FOREIGN KEY (organizacion_id)
+  UNIQUE KEY uk_memb (usuario_id, organizacion_id),
+  KEY idx_memb_org (organizacion_id),
+  KEY idx_memb_prof (profesional_id),
+  CONSTRAINT fk_memb_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_memb_org FOREIGN KEY (organizacion_id)
     REFERENCES organizaciones (id) ON DELETE CASCADE,
-  CONSTRAINT fk_usuarios_prof FOREIGN KEY (profesional_id)
+  CONSTRAINT fk_memb_prof FOREIGN KEY (profesional_id)
     REFERENCES profesionales (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

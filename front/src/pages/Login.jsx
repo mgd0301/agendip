@@ -38,11 +38,35 @@ const Link = styled.button.attrs({ type: 'button' })`
   font-weight: 500;
 `;
 
+const Opcion = styled.button.attrs({ type: 'button' })`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid ${(p) => (p.$marcada ? t.primary : t.border)};
+  border-radius: 10px;
+  background: ${(p) => (p.$marcada ? '#eff6ff' : '#fff')};
+  cursor: pointer;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  color: ${t.text};
+  small { color: ${t.muted}; font-weight: 400; font-size: 12px; }
+  &:hover { border-color: ${t.primary}; }
+  &:disabled { opacity: 0.6; cursor: wait; }
+`;
+
+const ROL = { admin: 'Administrador', recepcion: 'Recepción', profesional: 'Profesional' };
+
 export default function Login() {
   const { iniciar } = useAuth();
   const [modo, setModo] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', nombre: '', organizacion: '', tipo: 'consultorio' });
   const [enviando, setEnviando] = useState(false);
+  // Cuando la cuenta trabaja en varios consultorios, el servidor pide elegir en cuál entrar.
+  const [eleccion, setEleccion] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const enviar = async (e) => {
@@ -50,13 +74,58 @@ export default function Login() {
     setEnviando(true);
     try {
       const { data } = await api.post(modo === 'login' ? '/auth/login' : '/auth/registro', form);
-      iniciar(data);
+      if (data.elegir) setEleccion(data);
+      else iniciar(data);
     } catch (err) {
       toast.error(errorMsg(err));
     } finally {
       setEnviando(false);
     }
   };
+
+  const entrar = async (organizacionId) => {
+    setEnviando(true);
+    try {
+      const { data } = await api.post('/auth/login', { email: form.email, password: form.password, organizacion_id: organizacionId });
+      iniciar(data);
+    } catch (err) {
+      toast.error(errorMsg(err));
+      setEnviando(false);
+    }
+  };
+
+  if (eleccion) {
+    return (
+      <Fondo>
+        <Caja as="div">
+          <h1>
+            Agend<span>ip</span>
+          </h1>
+          <p>¿En qué consultorio vas a trabajar?</p>
+          {eleccion.organizaciones.map((o) => (
+            <Opcion key={o.id} $marcada={o.id === eleccion.ultima} disabled={enviando} onClick={() => entrar(o.id)}>
+              {o.nombre}
+              <small>{ROL[o.rol]}</small>
+            </Opcion>
+          ))}
+          {eleccion.es_superadmin && (
+            <Opcion disabled={enviando} onClick={() => entrar(0)}>
+              Panel de superadministrador
+              <small>Todas las organizaciones</small>
+            </Opcion>
+          )}
+          <Link
+            onClick={() => {
+              setEleccion(null);
+              setForm({ ...form, password: '' });
+            }}
+          >
+            Ingresar con otra cuenta
+          </Link>
+        </Caja>
+      </Fondo>
+    );
+  }
 
   return (
     <Fondo>

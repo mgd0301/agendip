@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import styled from 'styled-components';
 import {
-  FiCalendar, FiList, FiUsers, FiCreditCard, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX,
+  FiCalendar, FiList, FiUsers, FiCreditCard, FiUserCheck, FiTag, FiSlash, FiBarChart2, FiShield, FiSettings, FiLogOut, FiMenu, FiX, FiGlobe,
 } from 'react-icons/fi';
 import { theme as t } from '../styles/GlobalStyle';
 import { useAuth } from '../context/AuthContext';
 import { DatosProvider } from '../context/DatosContext';
+import { errorMsg } from '../api';
+import toast from 'react-hot-toast';
 
 const ROL = { admin: 'Administrador', recepcion: 'Recepción', profesional: 'Profesional' };
 
@@ -22,6 +24,8 @@ const MENU = [
   { to: '/usuarios', label: 'Usuarios', icon: FiShield, roles: ['admin'] },
   { to: '/configuracion', label: 'Configuración', icon: FiSettings, roles: ['admin'] },
 ];
+
+const SUPERADMIN = { to: '/superadmin', label: 'Superadmin', icon: FiGlobe };
 
 // En la barra inferior del celular se muestran los accesos más usados.
 const MOVIL = ['/', '/turnos', '/pacientes'];
@@ -61,6 +65,19 @@ const Brand = styled.div`
   small { display: block; color: #94a3b8; font-size: 12px; margin-top: 2px; }
   button { display: none; background: none; border: none; color: #fff; cursor: pointer; }
   @media ${t.mobile} { button { display: block; } }
+`;
+
+// Selector de consultorio para quien trabaja en más de uno.
+const SelectorOrg = styled.select`
+  margin: 0 14px 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  option { color: ${t.text}; background: #fff; }
 `;
 
 const Nav = styled.nav`
@@ -160,12 +177,23 @@ const Backdrop = styled.div`
 `;
 
 export default function Layout() {
-  const { usuario, salir } = useAuth();
+  const { usuario, salir, cambiarOrganizacion } = useAuth();
   const [abierto, setAbierto] = useState(false);
-  const items = MENU.filter((m) => !m.roles || m.roles.includes(usuario.rol));
+  const org = usuario.organizacion;
+  // El superadmin puede estar en su panel, sin ninguna organización elegida.
+  const items = [
+    ...(org ? MENU.filter((m) => !m.roles || m.roles.includes(usuario.rol)) : []),
+    ...(usuario.es_superadmin ? [SUPERADMIN] : []),
+  ];
+  const orgs = [...usuario.organizaciones];
+  if (org && !orgs.some((o) => o.id === org.id)) orgs.push({ id: org.id, nombre: org.nombre });
+  const conSelector = orgs.length > 1 || usuario.es_superadmin;
+  const Datos = org ? DatosProvider : Fragment;
+
+  const cambiar = (e) => cambiarOrganizacion(Number(e.target.value)).catch((err) => toast.error(errorMsg(err)));
 
   return (
-    <DatosProvider>
+    <Datos>
       <Shell>
         {abierto && <Backdrop onClick={() => setAbierto(false)} />}
         <Sidebar $open={abierto}>
@@ -174,12 +202,22 @@ export default function Layout() {
               <strong>
                 Agend<span>ip</span>
               </strong>
-              <small>{usuario.organizacion.nombre}</small>
+              {!conSelector && <small>{org.nombre}</small>}
             </div>
             <button onClick={() => setAbierto(false)} aria-label="Cerrar menú">
               <FiX size={20} />
             </button>
           </Brand>
+          {conSelector && (
+            <SelectorOrg value={org?.id || 0} onChange={cambiar} aria-label="Consultorio">
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.nombre}
+                </option>
+              ))}
+              {usuario.es_superadmin && <option value={0}>Panel de superadministrador</option>}
+            </SelectorOrg>
+          )}
           <Nav>
             {items.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onClick={() => setAbierto(false)}>
@@ -189,7 +227,7 @@ export default function Layout() {
           </Nav>
           <UserBox>
             <div>{usuario.nombre}</div>
-            <small>{ROL[usuario.rol]}</small>
+            <small>{org ? ROL[usuario.rol] : 'Superadministrador'}</small>
             <button onClick={salir}>
               <FiLogOut /> Cerrar sesión
             </button>
@@ -221,6 +259,6 @@ export default function Layout() {
           </button>
         </BottomNav>
       </Shell>
-    </DatosProvider>
+    </Datos>
   );
 }

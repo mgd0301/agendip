@@ -28,6 +28,8 @@ function UsuarioModal({ user, onClose, onSaved }) {
   const [guardando, setGuardando] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const soyYo = user?.id === yo.id;
+  // La cuenta también se usa en otro consultorio: sus datos personales los cambia solo la persona.
+  const compartida = !!user?.compartida;
 
   const guardar = async (e) => {
     e?.preventDefault();
@@ -35,9 +37,22 @@ function UsuarioModal({ user, onClose, onSaved }) {
     try {
       const datos = { ...form };
       if (user && !datos.password) delete datos.password;
-      if (user) await api.put(`/usuarios/${user.id}`, datos);
-      else await api.post('/usuarios', datos);
-      toast.success('Usuario guardado');
+      if (compartida) {
+        delete datos.nombre;
+        delete datos.email;
+      }
+      if (user) {
+        await api.put(`/usuarios/${user.id}`, datos);
+        toast.success('Usuario guardado');
+      } else {
+        const { data } = await api.post('/usuarios', datos);
+        toast.success(
+          data.existente
+            ? 'Ese email ya tenía cuenta en Agendip: ahora también tiene acceso a este consultorio, con su contraseña de siempre.'
+            : 'Usuario creado',
+          { duration: data.existente ? 7000 : undefined }
+        );
+      }
       onSaved();
     } catch (err) {
       toast.error(errorMsg(err));
@@ -63,11 +78,18 @@ function UsuarioModal({ user, onClose, onSaved }) {
     >
       <form onSubmit={guardar}>
         <Grid>
+          {compartida && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Muted $size="13px">
+                Esta persona también trabaja en otro consultorio, por eso su nombre, email y contraseña no se pueden cambiar desde acá.
+              </Muted>
+            </div>
+          )}
           <Field label="Nombre *">
-            <Input value={form.nombre} onChange={set('nombre')} />
+            <Input value={form.nombre} onChange={set('nombre')} disabled={compartida} />
           </Field>
           <Field label="Email (usuario) *">
-            <Input type="email" value={form.email} onChange={set('email')} />
+            <Input type="email" value={form.email} onChange={set('email')} disabled={compartida} />
           </Field>
           <Field label="Rol">
             <Select value={form.rol} onChange={set('rol')} disabled={soyYo}>
@@ -91,9 +113,17 @@ function UsuarioModal({ user, onClose, onSaved }) {
           <div style={{ gridColumn: '1 / -1' }}>
             <Muted $size="13px">{ROLES[form.rol].ayuda}</Muted>
           </div>
-          <Field label={user ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña * (mín. 6 caracteres)'}>
-            <Input type="password" value={form.password} onChange={set('password')} autoComplete="new-password" />
-          </Field>
+          {!compartida && (
+            <Field
+              label={
+                user
+                  ? 'Nueva contraseña (dejar vacío para no cambiar)'
+                  : 'Contraseña (mín. 6; no hace falta si ya tiene cuenta en otro consultorio)'
+              }
+            >
+              <Input type="password" value={form.password} onChange={set('password')} autoComplete="new-password" />
+            </Field>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'end' }}>
             {form.rol !== 'admin' && (
               <Check>
@@ -104,7 +134,7 @@ function UsuarioModal({ user, onClose, onSaved }) {
             {user && !soyYo && (
               <Check>
                 <input type="checkbox" checked={form.activo} onChange={set('activo')} />
-                Usuario activo
+                Acceso activo a este consultorio
               </Check>
             )}
           </div>
@@ -159,6 +189,12 @@ export default function Usuarios() {
                   <td>
                     <strong>{u.nombre}</strong>
                     {!u.activo && <Muted $size="12px"> (inactivo)</Muted>}
+                    {u.compartida ? (
+                      <>
+                        <br />
+                        <Muted $size="12px">También trabaja en otro consultorio</Muted>
+                      </>
+                    ) : null}
                   </td>
                   <td>{u.email}</td>
                   <td>

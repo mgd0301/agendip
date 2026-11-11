@@ -111,7 +111,7 @@ export default function Agenda() {
   const { profesionales, estados } = useDatos();
   const [vista, setVista] = useState(() => (esMovil() ? 'dia' : '4dias'));
   const [fecha, setFecha] = useState(hoy());
-  const [seleccion, setSeleccion] = useState(() => leer('agendip_profs', null));
+  const [seleccion, setSeleccion] = useState(() => leer(`agendip_profs_${usuario.organizacion.id}`, null));
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
   const [modal, setModal] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -158,11 +158,11 @@ export default function Agenda() {
 
   useEffect(() => {
     try {
-      if (seleccion) localStorage.setItem('agendip_profs', JSON.stringify(seleccion));
+      if (seleccion) localStorage.setItem(`agendip_profs_${usuario.organizacion.id}`, JSON.stringify(seleccion));
     } catch {
       /* almacenamiento no disponible */
     }
-  }, [seleccion]);
+  }, [seleccion, usuario.organizacion.id]);
 
   const [desde, hasta] = useMemo(() => {
     if (vista === 'dia') return [fecha, fecha];

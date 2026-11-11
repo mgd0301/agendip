@@ -20,6 +20,7 @@ mysql -u root -p < database/02_datos_demo.sql    # opcional: organización de pr
 
 - `01_estructura.sql` se puede volver a ejecutar sin perder datos (usa `CREATE TABLE IF NOT EXISTS`).
 - `03_migracion_obras_sociales.sql` es solo para bases creadas antes de que existieran las obras sociales con planes. Se ejecuta una vez, después de `01_estructura.sql`, y pasa el texto de obra social de cada paciente a la nueva tabla.
+- `04_migracion_membresias.sql` es solo para bases creadas antes de que un usuario pudiera trabajar en varios consultorios. Se ejecuta una vez: pasa el rol, el profesional vinculado y el permiso de sobreturno de cada usuario a su acceso (membresía) en la organización.
 - Con los datos demo se ingresa con **admin@agendip.com** / **admin123**. Cambie esa contraseña después de entrar.
 - Sin datos demo, use «Crear cuenta» en la pantalla de ingreso: se crea la organización con su usuario administrador.
 
@@ -40,6 +41,16 @@ npm start          # producción
 ```
 
 La API queda en `http://localhost:3001/api`. Las variables están documentadas en `.env.example`.
+
+### Superadministrador
+
+El superadministrador ve todas las organizaciones (panel «Superadmin»): sus datos de uso, el plan, el límite de profesionales, la baja o reactivación, el alta de organizaciones nuevas con su administrador, y puede entrar a cualquiera como administrador. No hay forma de volverse superadmin desde la aplicación; se asigna desde el servidor:
+
+```bash
+npm run superadmin -- persona@mail.com          # la hace superadmin
+npm run superadmin -- persona@mail.com quitar   # le quita el permiso
+npm run superadmin                              # lista los superadmins
+```
 
 ## 3. Frontend
 
@@ -74,7 +85,8 @@ npx cap open android     # en Android Studio: Build > Build APK(s)
 
 | Tema | Decisión inicial | Dónde se cambia |
 |---|---|---|
-| Organizaciones | Multi-organización desde el inicio: todos los datos se separan por `organizacion_id` | — |
+| Organizaciones | Multi-organización desde el inicio: todos los datos se separan por `organizacion_id`, en una sola base | Superadmin |
+| Usuarios | Una cuenta (email y contraseña) puede trabajar en varios consultorios, con un rol distinto en cada uno. Si trabaja en más de uno, elige en cuál al ingresar y puede cambiar desde el menú. El admin de un consultorio no puede cambiar el nombre, el email ni la contraseña de una cuenta que también se usa en otro | Usuarios |
 | Pacientes | Compartidos entre los profesionales de la misma organización | — |
 | Roles | `admin` (todo), `recepcion` (turnos y pacientes de todos), `profesional` (solo su agenda) | Usuarios |
 | Sobreturnos | Los puede dar el admin, o cualquier usuario con el permiso «Puede dar sobreturnos» | Usuarios |

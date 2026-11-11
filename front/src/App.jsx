@@ -16,12 +16,25 @@ import Reportes from './pages/Reportes';
 import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
 import ObrasSociales from './pages/ObrasSociales';
+import Superadmin from './pages/Superadmin';
 
 function Rutas() {
   const { usuario, cargando } = useAuth();
   if (cargando) return <Spinner />;
   if (!usuario) return <Login />;
   const admin = usuario.rol === 'admin';
+
+  // Superadmin en su panel, sin organización elegida: solo ve la lista de organizaciones.
+  if (!usuario.organizacion) {
+    return (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="superadmin" element={<Superadmin />} />
+          <Route path="*" element={<Navigate to="/superadmin" replace />} />
+        </Route>
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
@@ -36,6 +49,7 @@ function Rutas() {
         <Route path="reportes" element={<Reportes />} />
         {admin && <Route path="usuarios" element={<Usuarios />} />}
         {admin && <Route path="configuracion" element={<Configuracion />} />}
+        {usuario.es_superadmin && <Route path="superadmin" element={<Superadmin />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
