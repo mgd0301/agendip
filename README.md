@@ -66,21 +66,22 @@ Si la API no está en `localhost:3001`, cree `front/.env` con `VITE_API_URL=http
 
 ## 4. APK de Android (Capacitor)
 
-`capacitor.config.json` ya está creado. Se necesita Android Studio instalado.
+La APK trae adentro el front compilado y se conecta a la API publicada. Se necesitan el Android SDK y Java 21.
 
 ```bash
 cd front
-npm i @capacitor/core @capacitor/android
-npm i -D @capacitor/cli
-# En front/.env: VITE_API_URL=http://<IP o dominio del servidor>:3001/api
-#   (no use "localhost": en el celular apunta al propio celular)
-npm run build
-npx cap add android      # solo la primera vez
+# PowerShell: $env:VITE_API_URL="https://<dominio-de-railway>/api"; npm run build
+VITE_API_URL=https://<dominio-de-railway>/api npm run build
+npx cap add android      # solo la primera vez (la carpeta android/ no se versiona)
 npx cap sync
-npx cap open android     # en Android Studio: Build > Build APK(s)
+cd android
+./gradlew assembleDebug  # genera app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`capacitor.config.json` permite HTTP sin cifrar (`cleartext`) para poder probar contra un servidor de la red local. En producción conviene publicar la API con HTTPS.
+- La primera vez, cree `front/android/local.properties` con `sdk.dir=C:/Users/<usuario>/AppData/Local/Android/Sdk`.
+- No compile la APK con la API en `localhost`: en el celular, eso apunta al propio celular.
+- Agregue `https://localhost`, el origen de la app, a `CORS_ORIGIN` del backend.
+- Cada cambio del front requiere generar e instalar una APK nueva.
 
 ## 5. Publicación (Railway + Cloudflare Pages)
 

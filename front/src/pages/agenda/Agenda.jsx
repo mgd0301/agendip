@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled, { css, keyframes } from 'styled-components';
+import { Capacitor } from '@capacitor/core';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
 import { FiCalendar, FiChevronLeft, FiChevronRight, FiPlus, FiRefreshCw, FiSliders } from 'react-icons/fi';
@@ -111,7 +112,8 @@ const Leyenda = styled.div`
   i { width: 9px; height: 9px; border-radius: 50%; }
 `;
 
-const esMovil = () => window.matchMedia(t.mobile).matches;
+// En el celular y en la app de Android (aunque sea una tablet), la agenda arranca en vista día.
+const esMovil = () => Capacitor.isNativePlatform() || window.matchMedia(t.mobile).matches;
 const leer = (k, def) => {
   try {
     return JSON.parse(localStorage.getItem(k)) ?? def;
