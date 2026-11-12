@@ -73,6 +73,7 @@ cd front
 # PowerShell: $env:VITE_API_URL="https://<dominio-de-railway>/api"; npm run build
 VITE_API_URL=https://<dominio-de-railway>/api npm run build
 npx cap add android      # solo la primera vez (la carpeta android/ no se versiona)
+npx capacitor-assets generate --android   # ícono y pantalla de inicio (desde front/assets/)
 npx cap sync
 cd android
 ./gradlew assembleDebug  # genera app/build/outputs/apk/debug/app-debug.apk

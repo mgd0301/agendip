@@ -21,6 +21,7 @@
     "styled-components": "^6.6.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
     "@capacitor/cli": "^8.6.0",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.3.0",
