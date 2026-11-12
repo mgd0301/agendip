@@ -7,7 +7,7 @@ const ultimo = (cont) => {
   return botones[botones.length - 1] || null;
 };
 
-function botonDestino() {
+export function botonDestino() {
   const activo = document.activeElement;
 
   // Un cuadro de confirmación abierto tiene prioridad.

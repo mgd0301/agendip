@@ -2,8 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { instalarTeclaGuardar } from './utils/teclaGuardar'
+import { instalarTeclaEnter } from './utils/teclaEnter'
 
 instalarTeclaGuardar()
+instalarTeclaEnter()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
