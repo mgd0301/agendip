@@ -11,6 +11,9 @@ const ARRASTRABLES = ['pendiente', 'confirmado'];
 const UMBRAL_ARRASTRE = 5; // px que hay que mover el mouse para que cuente como arrastre
 const ESPERA_DEDO = 350; // ms manteniendo apretado con el dedo para levantar el turno
 const TOLERANCIA_DEDO = 10; // px que se tolera mover el dedo durante esa espera
+const MARGEN = 10; // px libres arriba y abajo para que la primera y la última hora se lean enteras
+const HUECO_MIN = 120; // un hueco sin atención de al menos 2 horas se achica
+const ALTO_HUECO = (min) => Math.min(48, Math.max(28, (min / 60) * 10)); // px que ocupa ese hueco
 
 const Scroller = styled.div`
   overflow: auto;
@@ -74,7 +77,8 @@ const Columna = styled.div`
 
 const Lineas = styled.div`
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
   pointer-events: none;
   z-index: 2;
   background-image: repeating-linear-gradient(
@@ -84,8 +88,18 @@ const Lineas = styled.div`
     transparent 1px,
     transparent ${(p) => 30 * p.$ppm}px
   );
-  background-position-y: ${(p) => p.$offset}px;
   opacity: 0.8;
+`;
+
+// Hueco largo sin atención, achicado: una franja angosta con el rayado y un borde punteado.
+const Hueco = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-top: 1px dashed #94a3b8;
+  border-bottom: 1px dashed #94a3b8;
 `;
 
 const Franja = styled.div`
@@ -306,8 +320,48 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     return [Math.floor(a / 60) * 60, Math.min(1440, Math.ceil(b / 60) * 60)];
   }, [cols]);
 
-  const alto = (hasta - desde) * ppm;
-  const y = (min) => (min - desde) * ppm;
+  // Tramos de la escala vertical. Las horas en que no atiende nadie de la vista y no hay turnos,
+  // si suman al menos HUECO_MIN seguidas, se achican para ver más horario de trabajo en pantalla.
+  const tramos = useMemo(() => {
+    const ocupada = (h) =>
+      cols.some((c) => c.franjas.some(([x, yy]) => x < h + 60 && yy > h) || c.turnos.some((it) => it.a < h + 60 && it.b > h));
+    // Un día sin atención ni turnos (franco, fin de semana) se muestra completo, sin achicar.
+    let libre = true;
+    for (let m = desde; m < hasta && libre; m += 60) libre = !ocupada(m);
+    const out = [];
+    let px = MARGEN;
+    let h = desde;
+    while (h < hasta) {
+      let fin = h + 60;
+      if (!ocupada(h)) while (fin < hasta && !ocupada(fin)) fin += 60;
+      const hueco = !libre && !ocupada(h) && fin - h >= HUECO_MIN;
+      if (!hueco) fin = h + 60;
+      const k = hueco ? ALTO_HUECO(fin - h) / (fin - h) : ppm;
+      const prev = out[out.length - 1];
+      if (prev && !prev.hueco && !hueco) prev.b = fin;
+      else out.push({ a: h, b: fin, px, k, hueco });
+      px += (fin - h) * k;
+      h = fin;
+    }
+    return out;
+  }, [cols, desde, hasta, ppm]);
+
+  const alto = tramos.reduce((t, r) => t + (r.b - r.a) * r.k, 0) + 2 * MARGEN;
+  const tramoDe = (min) => tramos.find((r) => min < r.b) || tramos[tramos.length - 1];
+  const y = (min) => {
+    if (min <= desde) return MARGEN + (min - desde) * ppm;
+    const r = tramoDe(min);
+    return r.px + (Math.min(min, r.b) - r.a) * r.k + Math.max(0, min - r.b) * ppm;
+  };
+  // Inversa de y: de píxeles (desde el borde de la columna) a minutos.
+  const minDeY = (py) => {
+    if (py <= MARGEN) return desde - (MARGEN - py) / ppm;
+    for (const r of tramos) {
+      const fin = r.px + (r.b - r.a) * r.k;
+      if (py < fin) return r.a + (py - r.px) / r.k;
+    }
+    return hasta + (py - alto + MARGEN) / ppm;
+  };
 
   // Al abrir, posiciona la vista cerca de la hora actual o del primer turno.
   useEffect(() => {
@@ -317,7 +371,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
     const objetivo = tieneHoy ? minutoActual - 60 : desde;
     el.scrollTop = Math.max(0, y(objetivo));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnas.map((c) => c.key).join(), desde, ppm]);
+  }, [columnas.map((c) => c.key).join(), desde, ppm, tramos.length]);
 
   // Ajusta un minuto a la grilla del profesional; dentro de una franja, alineado al inicio de esa franja.
   const ajustar = (c, min, pid, redondear = Math.floor) => {
@@ -369,7 +423,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
         setArrastre({ id: tu.id, col: -1 });
         return;
       }
-      const min = desde + (e.clientY - colEl.getBoundingClientRect().top) / ppm - presion.offset;
+      const min = minDeY(e.clientY - colEl.getBoundingClientRect().top) - presion.offset;
       const ini = Math.min(Math.max(desde, ajustar(c, min, pid, Math.round)), 1440 - presion.dur);
       destino.current = { fecha: c.fecha, hora: aHora(ini), profesional_id: pid };
       setArrastre({ id: tu.id, col: i, ini });
@@ -397,7 +451,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
       window.removeEventListener('keydown', tecla);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presion, cols, desde, ppm]);
+  }, [presion, cols, desde, ppm, tramos]);
 
   const apretar = (tu, a, b) => (e) => {
     if (!onMover || !ARRASTRABLES.includes(tu.estado)) return;
@@ -433,13 +487,13 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
   const click = (c) => (e) => {
     if (recienSoltado.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const min = desde + (e.clientY - rect.top) / ppm;
+    const min = minDeY(e.clientY - rect.top);
     const pid = c.profIds.length === 1 ? c.profIds[0] : undefined;
     onNuevo({ fecha: c.fecha, hora: aHora(ajustar(c, min, pid)), profesional_id: pid });
   };
 
   const horas = [];
-  for (let m = desde; m <= hasta; m += 60) horas.push(m);
+  for (let m = desde; m <= hasta; m += 60) if (!tramos.some((r) => r.hueco && m > r.a && m < r.b)) horas.push(m);
 
   return (
     <Scroller ref={scrollRef}>
@@ -466,20 +520,26 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
         {cols.map((c, i) => (
           <Columna key={c.key} $h={alto} onClick={click(c)} data-col={i}>
             {c.franjas.map(([a, b], i) => (
-              <Franja key={i} style={{ top: y(a), height: (b - a) * ppm }} />
+              <Franja key={i} style={{ top: y(a), height: y(b) - y(a) }} />
             ))}
-            <Lineas $ppm={ppm} $offset={(30 - (desde % 30)) * ppm} />
+            {tramos.map((r) =>
+              r.hueco ? (
+                <Hueco key={r.a} style={{ top: y(r.a), height: y(r.b) - y(r.a) }} />
+              ) : (
+                <Lineas key={r.a} $ppm={ppm} style={{ top: y(r.a), height: y(r.b) - y(r.a) }} />
+              )
+            )}
             {c.bloqueos.map((b) => {
               const a = Math.max(aMin(b.desde), desde);
               const z = b.dia_completo ? hasta : Math.min(aMin(b.hasta), hasta);
               return (
-                <Bloqueo key={b.id} style={{ top: y(a), height: Math.max((z - a) * ppm, 18) }}>
+                <Bloqueo key={b.id} style={{ top: y(a), height: Math.max(y(z) - y(a), 18) }}>
                   <span>{b.motivo || b.tipo.replace('_', ' ')}</span>
                 </Bloqueo>
               );
             })}
             {c.turnos.map(({ tu, a, b, lane, total }) => {
-              const h = Math.max((b - a) * ppm - 2, 16);
+              const h = Math.max(y(b) - y(a) - 2, 16);
               const est = estados[tu.estado] || {};
               const ancho = 100 / total;
               return (
@@ -559,7 +619,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
               );
             })}
             {arrastre?.col === i && presion && (
-              <Fantasma style={{ top: y(arrastre.ini) + 1, height: Math.max(presion.dur * ppm - 2, 16) }}>
+              <Fantasma style={{ top: y(arrastre.ini) + 1, height: Math.max(y(arrastre.ini + presion.dur) - y(arrastre.ini) - 2, 16) }}>
                 <div>
                   <strong>
                     {aHora(arrastre.ini)}–{aHora(arrastre.ini + presion.dur)}
