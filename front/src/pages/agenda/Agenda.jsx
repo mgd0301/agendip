@@ -13,6 +13,7 @@ import GrillaAgenda from './GrillaAgenda';
 import { ALTURAS } from './alturas';
 import VistaMes from './VistaMes';
 import TurnoModal from './TurnoModal';
+import MenuTurno from './MenuTurno';
 import EnviarAgendaModal from '../../components/EnviarAgendaModal';
 import { confirmar } from '../../utils/confirmar';
 
@@ -136,6 +137,8 @@ export default function Agenda() {
   const [seleccion, setSeleccion] = useState(() => leer(`agendip_profs_${usuario.organizacion.id}`, null));
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
   const [modal, setModal] = useState(null);
+  const [menu, setMenu] = useState(null); // { turno, pos }
+  const cerrarMenu = useCallback(() => setMenu(null), []);
   const [enviando, setEnviando] = useState(false);
   const [altura, setAltura] = useState(() => {
     const v = leer('agendip_altura', 'normal');
@@ -362,6 +365,30 @@ export default function Agenda() {
     return [];
   }, [vista, fecha, desde, hasta, profSel, profIds, datos.turnos]);
 
+  // Acciones del menú ⋮, sin abrir la ventana del turno.
+  const cambiarEstado = async (tu, estado, extra = {}) => {
+    try {
+      await api.patch(`/turnos/${tu.id}/estado`, { estado, ...extra });
+      toast.success(`Turno ${estados[estado]?.etiqueta.toLowerCase() || estado}`);
+      cargar();
+    } catch (err) {
+      toast.error(errorMsg(err));
+    }
+  };
+
+  const cancelarTurno = async (tu) => {
+    const ok = await confirmar({
+      tipo: 'peligro',
+      titulo: '¿Cancelar el turno?',
+      mensaje: `${tu.pac_apellido}, ${tu.pac_nombre} · ${DIAS_CORTOS[diaSemana(tu.inicio.slice(0, 10))]} ${fechaCorta(tu.inicio.slice(0, 10))} a las ${tu.inicio.slice(11, 16)}.
+
+Para anotar el motivo, abra el turno y cancélelo desde ahí.`,
+      aceptar: 'Cancelar turno',
+      cancelar: 'Volver',
+    });
+    if (ok) cambiarEstado(tu, 'cancelado');
+  };
+
   const alGuardar = (_, opciones = {}) => {
     cargar();
     if (opciones.cerrar !== false) setModal(null);
@@ -490,6 +517,7 @@ export default function Agenda() {
           ppm={ALTURAS[altura]}
           onNuevo={(inicial) => setModal({ inicial })}
           onAbrir={(id) => setModal({ turnoId: id })}
+          onMenu={(turno, pos) => setMenu({ turno, pos })}
           onMover={moverTurno}
         />
       )}
@@ -515,6 +543,17 @@ export default function Agenda() {
 
       {modal && (
         <TurnoModal key={modal.turnoId || 'nuevo'} turnoId={modal.turnoId} inicial={modal.inicial} onClose={() => setModal(null)} onSaved={alGuardar} />
+      )}
+      {menu && (
+        <MenuTurno
+          turno={menu.turno}
+          pos={menu.pos}
+          estados={estados}
+          onEstado={cambiarEstado}
+          onCancelar={cancelarTurno}
+          onAbrir={(id) => setModal({ turnoId: id })}
+          onClose={cerrarMenu}
+        />
       )}
       {enviando && (
         <EnviarAgendaModal

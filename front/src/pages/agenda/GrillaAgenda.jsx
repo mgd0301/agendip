@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
+import { FiMoreVertical } from 'react-icons/fi';
 import { aHora, aMin, hoy } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
 import { ALTURAS } from './alturas';
@@ -148,6 +149,27 @@ const Bloque = styled.button`
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  /* Con mouse, el botón ⋮ aparece al pasar por encima; en pantallas táctiles queda siempre visible. */
+  @media (hover: hover) {
+    .puntos { opacity: 0; }
+    &:hover .puntos, .puntos:focus-visible { opacity: 1; }
+  }
+`;
+
+const Puntos = styled.span`
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: ${t.muted};
+  background: rgba(255, 255, 255, 0.75);
+  &:hover { background: #fff; color: ${t.text}; }
 `;
 
 // Vista previa del lugar donde quedará el turno al soltarlo.
@@ -239,7 +261,7 @@ function useMinutoActual() {
  * Grilla horaria para vistas de día y semana.
  * columnas: [{ key, fecha, titulo, subtitulo, color, profIds: [] }]
  */
-export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, onMover, minWidth = 140, ppm = ALTURAS.normal }) {
+export default function GrillaAgenda({ columnas, datos, estados, profesionales, onNuevo, onAbrir, onMover, onMenu, minWidth = 140, ppm = ALTURAS.normal }) {
   const scrollRef = useRef(null);
   const minutoActual = useMinutoActual();
   const fechaHoy = hoy();
@@ -470,6 +492,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                     top: y(a) + 1,
                     height: h,
                     padding: h < 24 ? '1px 6px' : undefined,
+                    paddingRight: onMenu ? 24 : undefined,
                     left: `calc(${lane * ancho}% + 2px)`,
                     width: `calc(${ancho}% - 4px)`,
                     opacity: arrastre?.id === tu.id ? 0.35 : undefined,
@@ -484,6 +507,29 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                   }}
                   title={`${tu.inicio.slice(11, 16)}–${tu.fin.slice(11, 16)} · ${tu.pac_apellido}, ${tu.pac_nombre}${tu.prestacion ? ` · ${tu.prestacion}` : ''} · ${est.etiqueta || tu.estado}${tu.sobreturno ? ' · Sobreturno' : ''}`}
                 >
+                  {onMenu && (
+                    <Puntos
+                      className="puntos"
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Acciones del turno"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const r = e.currentTarget.getBoundingClientRect();
+                        onMenu(tu, { x: r.left, y: r.bottom + 4 });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const r = e.currentTarget.getBoundingClientRect();
+                        onMenu(tu, { x: r.left, y: r.bottom + 4 });
+                      }}
+                    >
+                      <FiMoreVertical size={15} />
+                    </Puntos>
+                  )}
                   {h < 34 ? (
                     <div>
                       <span className="chip" />

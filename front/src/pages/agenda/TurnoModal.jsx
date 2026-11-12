@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiCheck, FiClock, FiUserX, FiXCircle, FiRotateCcw } from 'react-icons/fi';
+import { FiClock, FiXCircle, FiRotateCcw } from 'react-icons/fi';
 import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
@@ -11,6 +11,7 @@ import { Badge, Button, Field, Grid, Input, Modal, Muted, Row, Select, Spinner, 
 import { ahora, fechaHora, fechaLarga } from '../../utils/fechas';
 import { confirmar } from '../../utils/confirmar';
 import { theme as t } from '../../styles/GlobalStyle';
+import { ACCIONES, CIERRAN } from './acciones';
 
 const Slots = styled.div`
   display: flex;
@@ -51,12 +52,6 @@ const Aviso = styled.div`
   font-size: 13px;
   margin-bottom: 12px;
 `;
-
-const ACCIONES = [
-  { estado: 'confirmado', label: 'Confirmar', icon: FiCheck },
-  { estado: 'atendido', label: 'Atendido', icon: FiCheck },
-  { estado: 'ausente', label: 'Ausente', icon: FiUserX },
-];
 
 const TIPOS_MSJ = [
   ['confirmacion', 'Confirmación'],
@@ -216,6 +211,7 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
       const { data } = await api.patch(`/turnos/${turnoId}/estado`, { estado, ...extra });
       toast.success(`Turno ${estados[estado]?.etiqueta.toLowerCase() || estado}`);
       setCancelando(null);
+      if (CIERRAN.includes(estado)) return onSaved(data);
       await cargar();
       onSaved(data, { cerrar: false });
     } catch (err) {
