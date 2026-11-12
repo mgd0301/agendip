@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { FiSearch, FiUserPlus, FiX } from 'react-icons/fi';
 import api, { errorMsg } from '../api';
-import { Button, Field, Grid, Input, Muted, Row } from './ui';
+import { useDatos } from '../context/DatosContext';
+import { Button, Field, Grid, Input, Muted, Row, Select } from './ui';
 import { theme as t } from '../styles/GlobalStyle';
 
 const Wrap = styled.div`
@@ -70,10 +71,11 @@ const AltaHeader = styled.div`
   button:hover { background: rgba(255, 255, 255, 0.15); }
 `;
 
-const VACIO = { nombre: '', apellido: '', telefono: '', dni: '', email: '' };
+const VACIO = { nombre: '', apellido: '', telefono: '', dni: '', email: '', obra_social_id: '', plan_id: '', nro_afiliado: '' };
 
 // Búsqueda de paciente existente con alta rápida en el mismo lugar.
 export default function PacienteSelector({ value, onChange, disabled }) {
+  const { obrasSociales } = useDatos();
   const [q, setQ] = useState('');
   const [resultados, setResultados] = useState([]);
   const [abierto, setAbierto] = useState(false);
@@ -152,6 +154,7 @@ export default function PacienteSelector({ value, onChange, disabled }) {
 
   if (nuevo) {
     const set = (k) => (e) => setNuevo({ ...nuevo, [k]: e.target.value });
+    const planes = obrasSociales.find((o) => o.id === Number(nuevo.obra_social_id))?.planes || [];
     return (
       <Alta data-f5>
         <AltaHeader>
@@ -178,6 +181,31 @@ export default function PacienteSelector({ value, onChange, disabled }) {
           <Field label="Email" style={{ gridColumn: '1 / -1' }}>
             <Input type="email" value={nuevo.email} onChange={set('email')} />
           </Field>
+          <Field label="Obra social / prepaga">
+            <Select value={nuevo.obra_social_id} onChange={(e) => setNuevo({ ...nuevo, obra_social_id: e.target.value, plan_id: '' })}>
+              <option value="">Particular (sin obra social)</option>
+              {obrasSociales.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.nombre}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Plan">
+            <Select value={nuevo.plan_id} onChange={set('plan_id')} disabled={!planes.length}>
+              <option value="">{!nuevo.obra_social_id ? '—' : planes.length ? 'Sin especificar' : 'Sin planes cargados'}</option>
+              {planes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {nuevo.obra_social_id && (
+            <Field label="Nº de afiliado">
+              <Input value={nuevo.nro_afiliado} onChange={set('nro_afiliado')} />
+            </Field>
+          )}
         </Grid>
         <Row $justify="flex-end" style={{ padding: '0 12px 12px' }}>
           <Button $small onClick={crear} disabled={guardando}>

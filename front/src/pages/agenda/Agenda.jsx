@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiRefreshCw, FiSliders } from 'react-icons/fi';
+import { FiCalendar, FiChevronLeft, FiChevronRight, FiPlus, FiRefreshCw, FiSliders } from 'react-icons/fi';
 import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
@@ -42,6 +42,19 @@ const BotonRecargar = styled(IconButton)`
       color: ${t.primary};
       svg { animation: ${girar} 0.7s linear infinite; }
     `}
+`;
+
+// Ir a una fecha puntual: el input queda oculto debajo del botón y se abre con showPicker(),
+// así el calendario nativo aparece junto al botón.
+const IrAFecha = styled.span`
+  position: relative;
+  display: inline-flex;
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
 `;
 
 const Opciones = styled.div`
@@ -111,6 +124,15 @@ export default function Agenda() {
   const { profesionales, estados } = useDatos();
   const [vista, setVista] = useState(() => (esMovil() ? 'dia' : '4dias'));
   const [fecha, setFecha] = useState(hoy());
+  const calendarioRef = useRef();
+  const abrirCalendario = () => {
+    const input = calendarioRef.current;
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  };
   const [seleccion, setSeleccion] = useState(() => leer(`agendip_profs_${usuario.organizacion.id}`, null));
   const [datos, setDatos] = useState({ turnos: [], disponibilidad: {} });
   const [modal, setModal] = useState(null);
@@ -370,6 +392,19 @@ export default function Agenda() {
           <IconButton onClick={() => mover(1)} aria-label="Siguiente">
             <FiChevronRight size={20} />
           </IconButton>
+          <IrAFecha>
+            <IconButton onClick={abrirCalendario} aria-label="Ir a una fecha" title="Ir a una fecha">
+              <FiCalendar size={18} />
+            </IconButton>
+            <input
+              ref={calendarioRef}
+              type="date"
+              tabIndex={-1}
+              aria-hidden="true"
+              value={fecha}
+              onChange={(e) => e.target.value && setFecha(e.target.value)}
+            />
+          </IrAFecha>
           <BotonRecargar onClick={recargar} disabled={girando} $girando={girando} aria-label="Recargar agenda" title="Recargar agenda">
             <FiRefreshCw size={18} />
           </BotonRecargar>
