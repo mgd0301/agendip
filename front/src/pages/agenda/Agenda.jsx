@@ -32,6 +32,20 @@ const Toolbar = styled.div`
   h2 { font-size: 18px; text-transform: capitalize; min-width: 0; }
 `;
 
+// Vistas, opciones y botones. En el celular ocupa todo el ancho: las vistas se reparten el espacio
+// libre y «Enviar» queda solo con el ícono, así nada se sale de la pantalla.
+const Acciones = styled(Row)`
+  margin-left: auto;
+  @media ${t.mobile} {
+    width: 100%;
+    gap: 6px;
+    > ${Segmented} { flex: 1; min-width: 0; }
+    > ${Segmented} button { flex: 1; padding: 7px 4px; white-space: nowrap; }
+    > button { padding-left: 10px; padding-right: 10px; flex-shrink: 0; }
+    .texto-enviar { display: none; }
+  }
+`;
+
 const girar = keyframes`
   to { transform: rotate(360deg); }
 `;
@@ -439,7 +453,7 @@ Para anotar el motivo, abra el turno y cancélelo desde ahí.`,
           </BotonRecargar>
         </Row>
         <h2>{titulo}</h2>
-        <Row style={{ marginLeft: 'auto' }}>
+        <Acciones>
           <Segmented>
             {[
               ['dia', 'Día'],
@@ -473,13 +487,13 @@ Para anotar el motivo, abra el turno y cancélelo desde ahí.`,
               </PanelOpciones>
             )}
           </Opciones>
-          <Button $variant="secondary" onClick={() => setEnviando(true)} title="Enviar la agenda al profesional por WhatsApp">
-            <FaWhatsapp /> Enviar
+          <Button $variant="secondary" onClick={() => setEnviando(true)} title="Enviar la agenda al profesional por WhatsApp" aria-label="Enviar la agenda por WhatsApp">
+            <FaWhatsapp /> <span className="texto-enviar">Enviar</span>
           </Button>
           <Button onClick={() => setModal({ inicial: { fecha, profesional_id: profIds.length === 1 ? profIds[0] : undefined } })}>
             <FiPlus /> Turno
           </Button>
-        </Row>
+        </Acciones>
       </Toolbar>
 
       {visibles.length > 1 && (
