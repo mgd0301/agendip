@@ -18,6 +18,7 @@ import Configuracion from './pages/Configuracion';
 import ObrasSociales from './pages/ObrasSociales';
 import Superadmin from './pages/Superadmin';
 import MiCuenta from './pages/MiCuenta';
+import HistoriaClinica from './pages/HistoriaClinica';
 import Restablecer from './pages/Restablecer';
 
 function Rutas() {
@@ -48,6 +49,7 @@ function Rutas() {
         <Route index element={<Agenda />} />
         <Route path="turnos" element={<Turnos />} />
         <Route path="pacientes" element={<Pacientes />} />
+        {usuario.profesional_id && <Route path="pacientes/:id/historia" element={<HistoriaClinica />} />}
         <Route path="profesionales" element={<Profesionales />} />
         <Route path="prestaciones" element={<Prestaciones />} />
         <Route path="obras-sociales" element={<ObrasSociales />} />

@@ -15,6 +15,7 @@ router.get('/organizacion', async (req, res) => {
 router.put('/organizacion', soloAdmin, async (req, res) => {
   const datos = pick(req.body, ['nombre', 'tipo', 'email', 'telefono', 'direccion', 'whatsapp_codigo_pais']);
   if (datos.nombre === null) throw badRequest('El nombre es obligatorio');
+  if (req.body.hc_compartida !== undefined) datos.hc_compartida = bool(req.body.hc_compartida);
   if (Object.keys(datos).length) await query('UPDATE organizaciones SET ? WHERE id = ?', [datos, req.orgId]);
   res.json({ ok: true });
 });

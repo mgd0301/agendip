@@ -30,4 +30,12 @@ export const GlobalStyle = createGlobalStyle`
   a { color: ${theme.primary}; text-decoration: none; }
   h1, h2, h3, h4 { margin: 0; font-weight: 600; }
   :focus-visible { outline: 2px solid ${theme.primary}; outline-offset: 2px; }
+
+  /* Al imprimir (ej. historia clínica) solo sale el contenido de la página. */
+  .solo-print { display: none; }
+  @media print {
+    aside, header, nav, .no-print { display: none !important; }
+    .solo-print { display: block; }
+    html, body, #root { height: auto; background: #fff; }
+  }
 `;

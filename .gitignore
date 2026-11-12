@@ -16,5 +16,5 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
-database/railway_estructura.sql
+database/railway_*.sql
 apk/

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiClock, FiXCircle, FiRotateCcw } from 'react-icons/fi';
+import { FiClock, FiFileText, FiXCircle, FiRotateCcw } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
@@ -67,6 +68,7 @@ const TIPOS_MSJ = [
  */
 export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const { profesionales, prestaciones, estados } = useDatos();
   const [turno, setTurno] = useState(null);
   const [cargando, setCargando] = useState(!!turnoId);
@@ -282,6 +284,16 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
                 <Row $wrap>
                   <Badge $color={est?.color}>{est?.etiqueta}</Badge>
                   {!!turno.sobreturno && <Badge $color="#9333ea">Sobreturno</Badge>}
+                  {usuario.profesional_id && (
+                    <Button
+                      $small
+                      $variant="ghost"
+                      onClick={() => navigate(`/pacientes/${turno.paciente_id}/historia${cancelado ? '' : `?turno=${turnoId}`}`)}
+                      title="Historia clínica del paciente"
+                    >
+                      <FiFileText /> Historia clínica
+                    </Button>
+                  )}
                 </Row>
                 {!cancelado && (
                   <Row $wrap>

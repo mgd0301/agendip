@@ -67,6 +67,7 @@ app.use('/api/profesionales', auth, require('./routes/profesionales'));
 app.use('/api/prestaciones', auth, require('./routes/prestaciones'));
 app.use('/api/obras-sociales', auth, require('./routes/obrasSociales'));
 app.use('/api/pacientes', auth, require('./routes/pacientes'));
+app.use('/api/historias', auth, require('./routes/historias'));
 app.use('/api/excepciones', auth, require('./routes/excepciones'));
 app.use('/api/turnos', auth, require('./routes/turnos'));
 app.use('/api/usuarios', auth, requireRole('admin'), require('./routes/usuarios'));

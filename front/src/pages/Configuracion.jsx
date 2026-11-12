@@ -68,6 +68,15 @@ function Organizacion() {
         <div style={{ alignSelf: 'end' }}>
           <Muted $size="12px">Argentina: 549 (celulares). Se antepone a los teléfonos de los pacientes al generar el link de WhatsApp.</Muted>
         </div>
+        <Field label="Historia clínica">
+          <Select value={Number(form.hc_compartida) ? '1' : '0'} onChange={set('hc_compartida')}>
+            <option value="1">Compartida: todos los profesionales ven la historia completa</option>
+            <option value="0">Privada: cada profesional ve solo lo que registró</option>
+          </Select>
+        </Field>
+        <div style={{ alignSelf: 'end' }}>
+          <Muted $size="12px">Solo los usuarios vinculados a un profesional acceden a la historia clínica. Recepción no la ve.</Muted>
+        </div>
       </Grid>
       <Row $justify="flex-end" style={{ marginTop: 12 }}>
         <Button onClick={guardar}>Guardar</Button>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { FiPlus, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { FiFileText, FiPlus, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api, { errorMsg } from '../api';
 import { useDatos } from '../context/DatosContext';
 import {
@@ -40,6 +42,8 @@ function CampoExtra({ campo, value, onChange }) {
 
 function PacienteModal({ id, onClose, onSaved }) {
   const { estados, obrasSociales } = useDatos();
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState(VACIO);
   // Nombres actuales del paciente, por si su obra social o plan ya fueron dados de baja.
   const [cobertura, setCobertura] = useState({});
@@ -114,6 +118,11 @@ function PacienteModal({ id, onClose, onSaved }) {
           {id && (
             <Button $variant="danger" onClick={eliminar} style={{ marginRight: 'auto' }}>
               <FiTrash2 /> Dar de baja
+            </Button>
+          )}
+          {id && usuario.profesional_id && (
+            <Button $variant="secondary" onClick={() => navigate(`/pacientes/${id}/historia`)}>
+              <FiFileText /> Historia clínica
             </Button>
           )}
           <Button $variant="secondary" onClick={onClose}>
