@@ -62,6 +62,8 @@ export const IconButton = styled(Button).attrs({ $variant: 'ghost' })`
 
 const campo = css`
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 8px 10px;
   min-height: 38px;
   border: 1px solid ${t.border};
@@ -72,7 +74,10 @@ const campo = css`
 `;
 
 export const Input = styled.input`${campo}`;
-export const Select = styled.select`${campo}`;
+export const Select = styled.select`
+  ${campo}
+  text-overflow: ellipsis;
+`;
 export const Textarea = styled.textarea`
   ${campo}
   resize: vertical;
@@ -102,7 +107,7 @@ export const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(${(p) => p.$cols || 2}, minmax(0, 1fr));
   gap: 12px;
-  @media ${t.mobile} { grid-template-columns: 1fr; }
+  @media ${t.mobile} { grid-template-columns: minmax(0, 1fr); }
 `;
 
 export const Row = styled.div`
@@ -259,7 +264,7 @@ const Overlay = styled.div`
   padding: 40px 16px;
   overflow-y: auto;
   z-index: 100;
-  @media ${t.mobile} { padding: 0; align-items: stretch; }
+  @media ${t.mobile} { padding: 0; align-items: stretch; overflow-x: hidden; }
 `;
 
 const Dialog = styled.div`
@@ -270,6 +275,7 @@ const Dialog = styled.div`
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
   display: flex;
   flex-direction: column;
+  min-width: 0;
   @media ${t.mobile} { border-radius: 0; max-width: none; min-height: 100%; }
 `;
 
@@ -285,6 +291,8 @@ const DialogHead = styled.div`
 const DialogBody = styled.div`
   padding: 18px;
   flex: 1;
+  min-width: 0;
+  @media ${t.mobile} { padding: 14px; }
 `;
 
 const DialogFoot = styled.div`
