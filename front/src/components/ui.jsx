@@ -264,7 +264,8 @@ const Overlay = styled.div`
   padding: 40px 16px;
   overflow-y: auto;
   z-index: 100;
-  @media ${t.mobile} { padding: 0; align-items: stretch; overflow-x: hidden; }
+  /* En el celular, pantalla completa: ocupa al menos todo el alto y crece si el formulario es más largo. */
+  @media ${t.mobile} { padding: 0; align-items: flex-start; overflow-x: hidden; }
 `;
 
 const Dialog = styled.div`
