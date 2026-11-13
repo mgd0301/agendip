@@ -16,6 +16,60 @@ const CAMPOS = [
   ['indicaciones', 'Indicaciones / tratamiento'],
 ];
 
+// Signos vitales y medidas: [campo, etiqueta, unidad].
+const MEDIDAS = [
+  ['peso', 'Peso', 'kg'],
+  ['talla', 'Talla', 'cm'],
+  ['perimetro_cefalico', 'Perím. cefálico', 'cm'],
+  ['temperatura', 'Temperatura', '°C'],
+  ['ta_sistolica', 'TA máxima', 'mmHg'],
+  ['ta_diastolica', 'TA mínima', 'mmHg'],
+  ['frec_cardiaca', 'Frec. cardíaca', 'lpm'],
+  ['frec_respiratoria', 'Frec. respiratoria', 'rpm'],
+  ['saturacion', 'Saturación', '%'],
+];
+
+// Número de la base ("3.250") a texto ("3,25").
+const num = (v) => (v === null || v === undefined || v === '' ? '' : String(Number(v)).replace('.', ','));
+const aNum = (v) => (v === null || v === undefined || String(v).trim() === '' ? null : Number(String(v).replace(',', '.')));
+
+const imc = (peso, talla) => {
+  const p = aNum(peso);
+  const t = aNum(talla);
+  return p > 0 && t > 0 ? num((p / (t / 100) ** 2).toFixed(1)) : '';
+};
+
+const hay = (v) => v !== null && v !== undefined && v !== '';
+const tieneMedidas = (e) => MEDIDAS.some(([k]) => hay(e[k]));
+
+// Edad a una fecha dada: en meses para los más chicos.
+function edadEn(nac, fecha) {
+  if (!nac) return '';
+  const [y, m, d] = nac.split('-').map(Number);
+  const [fy, fm, fd] = fecha.slice(0, 10).split('-').map(Number);
+  let meses = (fy - y) * 12 + (fm - m) - (fd < d ? 1 : 0);
+  if (meses < 0) return '';
+  if (meses < 24) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+  const a = Math.floor(meses / 12);
+  meses %= 12;
+  return a < 6 && meses ? `${a} a ${meses} m` : `${a} años`;
+}
+
+// Texto corto de una medida, ej "TA 120/80 mmHg".
+function resumenMedidas(e) {
+  const r = [];
+  for (const [k, l, u] of MEDIDAS) {
+    if (k === 'ta_diastolica') continue;
+    // La tensión va junta: máxima/mínima.
+    if (k === 'ta_sistolica') {
+      if (hay(e.ta_sistolica) || hay(e.ta_diastolica)) r.push(`TA ${num(e.ta_sistolica) || '?'}/${num(e.ta_diastolica) || '?'} ${u}`);
+    } else if (hay(e[k])) r.push(`${l} ${num(e[k])} ${u}`);
+  }
+  const i = imc(e.peso, e.talla);
+  if (i) r.push(`IMC ${i}`);
+  return r;
+}
+
 const ANTECEDENTES = [
   ['antecedentes', 'Antecedentes personales y familiares'],
   ['alergias', 'Alergias'],
@@ -79,6 +133,30 @@ const Aclaracion = styled.div`
   p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 `;
 
+const GrillaMedidas = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+`;
+
+const Chips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  span { background: #f1f5f9; border: 1px solid ${t.border}; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+`;
+
+const TablaMedidas = styled.div`
+  overflow-x: auto;
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid ${t.border}; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  th { font-size: 12px; color: ${t.muted}; font-weight: 600; }
+  th small { display: block; font-weight: 400; }
+`;
+
 const firma = (x) => `${x.prof_apellido?.trim()}, ${x.prof_nombre}`;
 
 function FormEvolucion({ inicial, onCancelar, onGuardar }) {
@@ -110,6 +188,19 @@ function FormEvolucion({ inicial, onCancelar, onGuardar }) {
           <Textarea value={form[k] || ''} onChange={set(k)} rows={k === 'examen' || k === 'indicaciones' ? 4 : 2} autoFocus={i === 0} />
         </Field>
       ))}
+      <h4 style={{ fontSize: 13, margin: '14px 0 0' }}>Signos vitales y medidas</h4>
+      <GrillaMedidas>
+        {MEDIDAS.map(([k, l, u]) => (
+          <Field key={k} label={`${l} (${u})`}>
+            <Input inputMode="decimal" value={form[k] ?? ''} onChange={set(k)} />
+          </Field>
+        ))}
+        {imc(form.peso, form.talla) && (
+          <Field label="IMC (kg/m²)">
+            <Input value={imc(form.peso, form.talla)} readOnly tabIndex={-1} />
+          </Field>
+        )}
+      </GrillaMedidas>
       <Row $justify="flex-end" style={{ marginTop: 12 }}>
         <Button $variant="secondary" onClick={onCancelar}>
           Cancelar
@@ -228,6 +319,13 @@ function TarjetaEvolucion({ e, onCorregir, onAclarado }) {
           </Badge>
         )}
       </Cabeza>
+      {tieneMedidas(e) && (
+        <Chips>
+          {resumenMedidas(e).map((m) => (
+            <span key={m}>{m}</span>
+          ))}
+        </Chips>
+      )}
       {CAMPOS.filter(([k]) => e[k]).map(([k, l]) => (
         <Bloque key={k}>
           <h4>{l}</h4>
@@ -269,6 +367,52 @@ function TarjetaEvolucion({ e, onCorregir, onAclarado }) {
         </Row>
       )}
     </Evolucion>
+  );
+}
+
+// Evolución de las medidas en el tiempo (útil en pediatría para seguir el crecimiento).
+function Mediciones({ evoluciones, nacimiento }) {
+  const filas = evoluciones.filter(tieneMedidas);
+  if (!filas.length) return null;
+  const conImc = filas.some((e) => imc(e.peso, e.talla));
+  const cols = MEDIDAS.filter(([k]) => filas.some((e) => hay(e[k])));
+  return (
+    <Seccion>
+      <h3>Mediciones</h3>
+      <TablaMedidas>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              {nacimiento && <th>Edad</th>}
+              {cols.map(([k, l, u]) => (
+                <th key={k}>
+                  {l}
+                  <small>{u}</small>
+                </th>
+              ))}
+              {conImc && (
+                <th>
+                  IMC<small>kg/m²</small>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((e) => (
+              <tr key={e.id}>
+                <td>{fechaCorta(e.fecha)}</td>
+                {nacimiento && <td>{edadEn(nacimiento, e.fecha)}</td>}
+                {cols.map(([k]) => (
+                  <td key={k}>{num(e[k]) || '—'}</td>
+                ))}
+                {conImc && <td>{imc(e.peso, e.talla) || '—'}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TablaMedidas>
+    </Seccion>
   );
 }
 
@@ -374,6 +518,8 @@ export default function HistoriaClinica() {
 
       {form && <FormEvolucion key={form.id || 'nueva'} inicial={form} onCancelar={() => setForm(null)} onGuardar={guardar} />}
 
+      <Mediciones evoluciones={hc.evoluciones} nacimiento={p.fecha_nacimiento} />
+
       <h3 style={{ fontSize: 15, margin: '18px 0 10px' }}>Evoluciones ({hc.evoluciones.length})</h3>
       {hc.evoluciones.length === 0 ? (
         <Empty>Todavía no hay evoluciones registradas.</Empty>
@@ -384,7 +530,7 @@ export default function HistoriaClinica() {
             e={e}
             onAclarado={cargar}
             onCorregir={() => {
-              setForm({ ...e, fecha: e.fecha.slice(0, 16).replace(' ', 'T') });
+              setForm({ ...e, ...Object.fromEntries(MEDIDAS.map(([k]) => [k, num(e[k])])), fecha: e.fecha.slice(0, 16).replace(' ', 'T') });
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />

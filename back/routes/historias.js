@@ -14,6 +14,19 @@ router.use((req, res, next) => {
 });
 
 const CAMPOS_EVO = ['motivo', 'examen', 'diagnostico', 'indicaciones'];
+// Signos vitales y medidas: [campo, nombre, mínimo, máximo, decimales]. Rangos amplios, solo para frenar errores de tipeo.
+const MEDIDAS = [
+  ['peso', 'Peso', 0.3, 400, 3],
+  ['talla', 'Talla', 20, 250, 1],
+  ['perimetro_cefalico', 'Perímetro cefálico', 20, 70, 1],
+  ['temperatura', 'Temperatura', 30, 45, 1],
+  ['ta_sistolica', 'Tensión sistólica', 30, 300, 0],
+  ['ta_diastolica', 'Tensión diastólica', 20, 200, 0],
+  ['frec_cardiaca', 'Frecuencia cardíaca', 20, 300, 0],
+  ['frec_respiratoria', 'Frecuencia respiratoria', 5, 120, 0],
+  ['saturacion', 'Saturación', 50, 100, 0],
+];
+const TODOS = [...CAMPOS_EVO, ...MEDIDAS.map((m) => m[0])];
 const texto = (v) => (v === undefined || v === null ? null : String(v).trim() || null);
 
 async function compartida(orgId) {
@@ -64,6 +77,7 @@ router.get('/:pacienteId', async (req, res) => {
 
   const evoluciones = await query(
     `SELECT x.id, x.profesional_id, x.turno_id, x.fecha, x.motivo, x.examen, x.diagnostico, x.indicaciones,
+            ${MEDIDAS.map((m) => `x.${m[0]}`).join(', ')},
             x.creado_en, x.editado_en, DATE(x.creado_en) = CURDATE() AS del_dia, ${quien}
        FROM hc_evoluciones x JOIN profesionales pr ON pr.id = x.profesional_id
       WHERE x.paciente_id = ? AND x.organizacion_id = ?${f.sql}
@@ -112,9 +126,17 @@ router.put('/:pacienteId/antecedentes', async (req, res) => {
   res.json({ ok: true });
 });
 
+function medida(body, [c, nombre, min, max, dec]) {
+  const v = body[c];
+  if (v === undefined || v === null || String(v).trim() === '') return null;
+  const n = Number(String(v).trim().replace(',', '.'));
+  if (!Number.isFinite(n) || n < min || n > max) throw badRequest(`${nombre}: valor fuera de rango (${min} a ${max})`);
+  return Number(n.toFixed(dec));
+}
+
 function datosEvolucion(body) {
-  const datos = Object.fromEntries(CAMPOS_EVO.map((c) => [c, texto(body[c])]));
-  if (!CAMPOS_EVO.some((c) => datos[c])) throw badRequest('Complete al menos un campo de la evolución');
+  const datos = Object.fromEntries([...CAMPOS_EVO.map((c) => [c, texto(body[c])]), ...MEDIDAS.map((m) => [m[0], medida(body, m)])]);
+  if (!TODOS.some((c) => datos[c] !== null)) throw badRequest('Complete al menos un campo de la evolución');
   if (body.fecha !== undefined) {
     const [f, h] = String(body.fecha).split(/[ T]/);
     if (!esFecha(f) || !esHora(h || '')) throw badRequest('Fecha inválida');
@@ -144,7 +166,7 @@ router.post('/:pacienteId/evoluciones', async (req, res) => {
       profesional_id: req.user.profesional_id,
       usuario_id: req.user.id,
       turno_id: turnoId,
-      ...Object.fromEntries(CAMPOS_EVO.map((c) => [c, datos[c]])),
+      ...Object.fromEntries(TODOS.map((c) => [c, datos[c]])),
     },
     ...(datos.fecha ? [datos.fecha] : []),
   ]);
