@@ -86,6 +86,20 @@ cd android
 - Agregue `https://localhost`, el origen de la app, a `CORS_ORIGIN` del backend.
 - Cada cambio del front requiere generar e instalar una APK nueva.
 
+### Versión para Play Store (.aab firmado)
+
+Play Store pide un **.aab** firmado con la llave de publicación, que está en `keys/` (fuera de git): `agendip-release.jks` y `agendip-release.properties` (con la contraseña). **Guardar copia de ambos fuera de esta PC.**
+
+Si se regenera `front/android/`, volver a agregar en `android/app/build.gradle` el bloque `signingConfigs.release`, que lee `../../../keys/agendip-release.properties`, y `signingConfig signingConfigs.release` en `buildTypes.release`.
+
+```bash
+# con VITE_API_URL de producción, igual que la APK
+npm run build && npx cap sync android
+cd android && ./gradlew bundleRelease   # genera app/build/outputs/bundle/release/app-release.aab
+```
+
+Cada subida a Play Store necesita un `versionCode` mayor (y conviene cambiar `versionName`) en `android/app/build.gradle`.
+
 ## 5. Publicación (Railway + Cloudflare Pages)
 
 **Base y backend en Railway**
