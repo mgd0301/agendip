@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
-import { FiArrowLeft, FiEdit2, FiMessageSquare, FiPlus, FiPrinter } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiMessageSquare, FiPlus, FiPrinter, FiSliders } from 'react-icons/fi';
 import api, { errorMsg } from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Badge, Button, Card, Empty, Field, Grid, Input, Muted, Page, Row, Spinner, Textarea } from '../components/ui';
+import { Badge, Button, Card, Check, Empty, Field, Grid, Input, Modal, Muted, Page, Row, Spinner, Textarea } from '../components/ui';
 import { theme as t } from '../styles/GlobalStyle';
 import { ahora, edad, fechaCorta, fechaHora } from '../utils/fechas';
 
@@ -16,17 +16,32 @@ const CAMPOS = [
   ['indicaciones', 'Indicaciones / tratamiento'],
 ];
 
-// Signos vitales y medidas: [campo, etiqueta, unidad].
+// Signos vitales y medidas: [campo, etiqueta, unidad, opción que lo activa].
 const MEDIDAS = [
-  ['peso', 'Peso', 'kg'],
-  ['talla', 'Talla', 'cm'],
-  ['perimetro_cefalico', 'Perím. cefálico', 'cm'],
-  ['temperatura', 'Temperatura', '°C'],
-  ['ta_sistolica', 'TA máxima', 'mmHg'],
-  ['ta_diastolica', 'TA mínima', 'mmHg'],
-  ['frec_cardiaca', 'Frec. cardíaca', 'lpm'],
-  ['frec_respiratoria', 'Frec. respiratoria', 'rpm'],
-  ['saturacion', 'Saturación', '%'],
+  ['peso', 'Peso', 'kg', 'peso'],
+  ['talla', 'Talla', 'cm', 'talla'],
+  ['perimetro_cefalico', 'Perím. cefálico', 'cm', 'perimetro_cefalico'],
+  ['temperatura', 'Temperatura', '°C', 'temperatura'],
+  ['ta_sistolica', 'TA máxima', 'mmHg', 'ta'],
+  ['ta_diastolica', 'TA mínima', 'mmHg', 'ta'],
+  ['frec_cardiaca', 'Frec. cardíaca', 'lpm', 'frec_cardiaca'],
+  ['frec_respiratoria', 'Frec. respiratoria', 'rpm', 'frec_respiratoria'],
+  ['saturacion', 'Saturación', '%', 'saturacion'],
+];
+
+// Lo que cada profesional puede elegir que aparezca al cargar una evolución.
+const OPCIONES = [
+  ['Medidas', [['peso', 'Peso'], ['talla', 'Talla'], ['perimetro_cefalico', 'Perímetro cefálico']]],
+  [
+    'Signos vitales',
+    [
+      ['temperatura', 'Temperatura'],
+      ['ta', 'Tensión arterial'],
+      ['frec_cardiaca', 'Frecuencia cardíaca'],
+      ['frec_respiratoria', 'Frecuencia respiratoria'],
+      ['saturacion', 'Saturación de oxígeno'],
+    ],
+  ],
 ];
 
 // Número de la base ("3.250") a texto ("3,25").
@@ -159,10 +174,13 @@ const TablaMedidas = styled.div`
 
 const firma = (x) => `${x.prof_apellido?.trim()}, ${x.prof_nombre}`;
 
-function FormEvolucion({ inicial, onCancelar, onGuardar }) {
+function FormEvolucion({ inicial, medidas, onCancelar, onGuardar }) {
   const [form, setForm] = useState(inicial);
   const [guardando, setGuardando] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  // Las que eligió el profesional, más las que ya tienen valor (al corregir).
+  const visibles = MEDIDAS.filter(([k, , , o]) => medidas.includes(o) || hay(inicial[k]));
+  const conImc = visibles.some(([k]) => k === 'peso') && visibles.some(([k]) => k === 'talla') && imc(form.peso, form.talla);
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -188,19 +206,23 @@ function FormEvolucion({ inicial, onCancelar, onGuardar }) {
           <Textarea value={form[k] || ''} onChange={set(k)} rows={k === 'examen' || k === 'indicaciones' ? 4 : 2} autoFocus={i === 0} />
         </Field>
       ))}
-      <h4 style={{ fontSize: 13, margin: '14px 0 0' }}>Signos vitales y medidas</h4>
-      <GrillaMedidas>
-        {MEDIDAS.map(([k, l, u]) => (
-          <Field key={k} label={`${l} (${u})`}>
-            <Input inputMode="decimal" value={form[k] ?? ''} onChange={set(k)} />
-          </Field>
-        ))}
-        {imc(form.peso, form.talla) && (
-          <Field label="IMC (kg/m²)">
-            <Input value={imc(form.peso, form.talla)} readOnly tabIndex={-1} />
-          </Field>
-        )}
-      </GrillaMedidas>
+      {visibles.length > 0 && (
+        <>
+          <h4 style={{ fontSize: 13, margin: '14px 0 0' }}>Signos vitales y medidas</h4>
+          <GrillaMedidas>
+            {visibles.map(([k, l, u]) => (
+              <Field key={k} label={`${l} (${u})`}>
+                <Input inputMode="decimal" value={form[k] ?? ''} onChange={set(k)} />
+              </Field>
+            ))}
+            {conImc && (
+              <Field label="IMC (kg/m²)">
+                <Input value={conImc} readOnly tabIndex={-1} />
+              </Field>
+            )}
+          </GrillaMedidas>
+        </>
+      )}
       <Row $justify="flex-end" style={{ marginTop: 12 }}>
         <Button $variant="secondary" onClick={onCancelar}>
           Cancelar
@@ -370,6 +392,58 @@ function TarjetaEvolucion({ e, onCorregir, onAclarado }) {
   );
 }
 
+// Cada profesional elige qué signos vitales y medidas carga en sus evoluciones.
+function Personalizar({ medidas, onCerrar, onGuardado }) {
+  const [elegidas, setElegidas] = useState(medidas);
+  const [guardando, setGuardando] = useState(false);
+  const alternar = (o) => setElegidas(elegidas.includes(o) ? elegidas.filter((x) => x !== o) : [...elegidas, o]);
+
+  const guardar = async () => {
+    setGuardando(true);
+    try {
+      const r = await api.put('/historias/config/medidas', { medidas: elegidas });
+      toast.success('Listo: así se verán sus próximas evoluciones');
+      onGuardado(r.data.medidas);
+    } catch (err) {
+      toast.error(errorMsg(err));
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Personalizar mi historia clínica"
+      onClose={onCerrar}
+      width="440px"
+      footer={
+        <>
+          <Button $variant="secondary" onClick={onCerrar}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar} disabled={guardando}>
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <Muted as="p" $size="13px" style={{ marginTop: 0 }}>
+        Antecedentes y evolución están siempre. Marque qué más quiere cargar en cada consulta. Aplica solo a sus evoluciones.
+      </Muted>
+      {OPCIONES.map(([grupo, items]) => (
+        <div key={grupo} style={{ marginTop: 12 }}>
+          <h4 style={{ fontSize: 13, marginBottom: 6 }}>{grupo}</h4>
+          {items.map(([o, l]) => (
+            <Check key={o} style={{ display: 'flex', marginBottom: 6 }}>
+              <input type="checkbox" checked={elegidas.includes(o)} onChange={() => alternar(o)} />
+              {l}
+            </Check>
+          ))}
+        </div>
+      ))}
+    </Modal>
+  );
+}
+
 // Evolución de las medidas en el tiempo (útil en pediatría para seguir el crecimiento).
 function Mediciones({ evoluciones, nacimiento }) {
   const filas = evoluciones.filter(tieneMedidas);
@@ -423,6 +497,7 @@ export default function HistoriaClinica() {
   const { usuario } = useAuth();
   const [hc, setHc] = useState(null);
   const [form, setForm] = useState(null); // evolución en edición o nueva
+  const [personalizando, setPersonalizando] = useState(false);
 
   const cargar = useCallback(
     () =>
@@ -473,6 +548,9 @@ export default function HistoriaClinica() {
             {p.apellido}, {p.nombre}
           </Muted>
         </h1>
+        <Button $variant="ghost" className="no-print" onClick={() => setPersonalizando(true)} title="Elegir qué datos cargar en las evoluciones">
+          <FiSliders /> Personalizar
+        </Button>
         <Button $variant="secondary" className="no-print" onClick={() => window.print()}>
           <FiPrinter /> Imprimir
         </Button>
@@ -516,7 +594,18 @@ export default function HistoriaClinica() {
 
       <Antecedentes datos={hc.antecedentes} pacienteId={id} onGuardado={cargar} />
 
-      {form && <FormEvolucion key={form.id || 'nueva'} inicial={form} onCancelar={() => setForm(null)} onGuardar={guardar} />}
+      {personalizando && (
+        <Personalizar
+          medidas={hc.medidas}
+          onCerrar={() => setPersonalizando(false)}
+          onGuardado={(medidas) => {
+            setHc({ ...hc, medidas });
+            setPersonalizando(false);
+          }}
+        />
+      )}
+
+      {form && <FormEvolucion key={form.id || 'nueva'} inicial={form} medidas={hc.medidas} onCancelar={() => setForm(null)} onGuardar={guardar} />}
 
       <Mediciones evoluciones={hc.evoluciones} nacimiento={p.fecha_nacimiento} />
 

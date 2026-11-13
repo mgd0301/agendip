@@ -17,3 +17,10 @@ ALTER TABLE hc_evoluciones
   ADD COLUMN frec_cardiaca      SMALLINT UNSIGNED NULL COMMENT 'lpm' AFTER ta_diastolica,
   ADD COLUMN frec_respiratoria  SMALLINT UNSIGNED NULL COMMENT 'rpm' AFTER frec_cardiaca,
   ADD COLUMN saturacion         TINYINT UNSIGNED NULL COMMENT '% SpO2' AFTER frec_respiratoria;
+
+-- Qué signos vitales y medidas usa cada profesional en sus evoluciones
+-- (ninguno por defecto; cada uno los elige desde la historia clínica).
+ALTER TABLE profesionales
+  ADD COLUMN hc_medidas VARCHAR(255) NULL
+    COMMENT 'Historia clínica: signos vitales y medidas que usa, separados por coma'
+    AFTER duracion_turno_min;

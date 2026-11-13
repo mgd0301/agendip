@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS profesionales (
   telefono           VARCHAR(50)  NULL,
   color              VARCHAR(7)   NOT NULL DEFAULT '#2563eb',
   duracion_turno_min SMALLINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Duración predeterminada / tamaño de bloque',
+  hc_medidas         VARCHAR(255) NULL COMMENT 'Historia clínica: signos vitales y medidas que usa, separados por coma',
   activo             TINYINT(1)   NOT NULL DEFAULT 1,
   creado_en          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

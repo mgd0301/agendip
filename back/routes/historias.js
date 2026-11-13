@@ -27,6 +27,8 @@ const MEDIDAS = [
   ['saturacion', 'Saturación', 50, 100, 0],
 ];
 const TODOS = [...CAMPOS_EVO, ...MEDIDAS.map((m) => m[0])];
+// Lo que cada profesional elige mostrar en sus evoluciones (la tensión va junta: "ta").
+const OPCIONES = ['peso', 'talla', 'perimetro_cefalico', 'temperatura', 'ta', 'frec_cardiaca', 'frec_respiratoria', 'saturacion'];
 const texto = (v) => (v === undefined || v === null ? null : String(v).trim() || null);
 
 async function compartida(orgId) {
@@ -60,6 +62,17 @@ async function evolucion(req, id) {
   if (!e) throw notFound('Evolución no encontrada');
   return e;
 }
+
+// Signos vitales y medidas que usa el profesional del usuario (ninguno = solo texto).
+router.put('/config/medidas', async (req, res) => {
+  const elegidas = Array.isArray(req.body.medidas) ? OPCIONES.filter((m) => req.body.medidas.includes(m)) : [];
+  await query('UPDATE profesionales SET hc_medidas = ? WHERE id = ? AND organizacion_id = ?', [
+    elegidas.join(',') || null,
+    req.user.profesional_id,
+    req.orgId,
+  ]);
+  res.json({ medidas: elegidas });
+});
 
 router.get('/:pacienteId', async (req, res) => {
   const p = await paciente(req, req.params.pacienteId);
@@ -96,9 +109,11 @@ router.get('/:pacienteId', async (req, res) => {
     : [];
 
   const mio = Number(req.user.profesional_id);
+  const [yo] = await query('SELECT hc_medidas FROM profesionales WHERE id = ?', [mio]);
   res.json({
     paciente: p,
     compartida: comp,
+    medidas: (yo?.hc_medidas || '').split(',').filter((m) => OPCIONES.includes(m)),
     antecedentes: antecedentes || null,
     evoluciones: evoluciones.map(({ del_dia, ...e }) => ({
       ...e,
