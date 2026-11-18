@@ -6,6 +6,7 @@ import api, { errorMsg } from '../api';
 import { useDatos } from '../context/DatosContext';
 import { Button, Field, Grid, Input, Muted, Row, Select } from './ui';
 import { theme as t } from '../styles/GlobalStyle';
+import { campoDespuesDe } from '../utils/teclaEnter';
 
 const Wrap = styled.div`
   position: relative;
@@ -99,7 +100,17 @@ export default function PacienteSelector({ value, onChange, disabled }) {
     return () => clearTimeout(timer.current);
   }, [q]);
 
+  // Al elegir un paciente, el foco pasa al control siguiente del formulario.
+  const tarjeta = useRef(null);
+  const avanzar = useRef(false);
+  useEffect(() => {
+    if (!avanzar.current || !value || !tarjeta.current) return;
+    avanzar.current = false;
+    campoDespuesDe(tarjeta.current)?.focus();
+  }, [value]);
+
   const elegir = (p) => {
+    avanzar.current = true;
     onChange(p);
     setQ('');
     setResultados([]);
@@ -134,7 +145,7 @@ export default function PacienteSelector({ value, onChange, disabled }) {
 
   if (value) {
     return (
-      <Seleccionado>
+      <Seleccionado ref={tarjeta}>
         <div>
           <strong>
             {value.apellido}, {value.nombre}

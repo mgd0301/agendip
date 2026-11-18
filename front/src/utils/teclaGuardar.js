@@ -1,5 +1,6 @@
 // F5 no recarga la página: lleva el foco al botón principal (Guardar, Asignar turno, etc.)
 // de la ventana en la que se está trabajando. Luego Enter lo ejecuta.
+// Ese botón se marca con data-f5-destino, y el estilo global le antepone «F5».
 const PRIMARIO = 'button[data-variant="primary"]:not(:disabled)';
 
 const ultimo = (cont) => {
@@ -27,7 +28,17 @@ export function botonDestino() {
     const b = el.querySelector(PRIMARIO);
     if (b) return b;
   }
-  return null;
+  // Sin foco en ningún formulario: el botón principal de la pantalla.
+  return document.querySelector('main ' + PRIMARIO) || document.querySelector(PRIMARIO);
+}
+
+let marcado = null;
+function marcarDestino() {
+  const boton = botonDestino();
+  if (boton === marcado) return;
+  marcado?.removeAttribute('data-f5-destino');
+  boton?.setAttribute('data-f5-destino', '');
+  marcado = boton;
 }
 
 export function instalarTeclaGuardar() {
@@ -44,4 +55,23 @@ export function instalarTeclaGuardar() {
     },
     true
   );
+
+  // La marca se actualiza al moverse entre controles y cuando cambia la pantalla.
+  let pendiente = false;
+  const programar = () => {
+    if (pendiente) return;
+    pendiente = true;
+    requestAnimationFrame(() => {
+      pendiente = false;
+      marcarDestino();
+    });
+  };
+  document.addEventListener('focusin', programar);
+  document.addEventListener('focusout', programar);
+  new MutationObserver(programar).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled', 'role'],
+  });
 }

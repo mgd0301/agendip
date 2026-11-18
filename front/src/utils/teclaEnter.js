@@ -23,6 +23,13 @@ function vecino(el, paso) {
   return i === -1 ? null : campos[i + paso] || null;
 }
 
+// Primer control que viene después de un elemento cualquiera (por ejemplo, la tarjeta del paciente elegido);
+// si no hay, el botón principal.
+export function campoDespuesDe(el) {
+  const campos = [...zonaDe(el).querySelectorAll(CONTROLES)].filter((c) => esCampo(c) && visible(c));
+  return campos.find((c) => el.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING && !el.contains(c)) || botonDestino();
+}
+
 const enviaSolo = (el) => !!el.form && [...el.form.elements].some((x) => x.type === 'submit' && !x.disabled);
 
 export function instalarTeclaEnter() {

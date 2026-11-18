@@ -31,6 +31,21 @@ export const GlobalStyle = createGlobalStyle`
   h1, h2, h3, h4 { margin: 0; font-weight: 600; }
   :focus-visible { outline: 2px solid ${theme.primary}; outline-offset: 2px; }
 
+  /* Botón al que lleva F5 (ver utils/teclaGuardar.js). En el celular no hay F5. */
+  button[data-f5-destino]::before {
+    content: 'F5';
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+  }
+  @media (hover: none), (pointer: coarse) {
+    button[data-f5-destino]::before { display: none; }
+  }
+
   /* Al imprimir (ej. historia clínica) solo sale el contenido de la página. */
   .solo-print { display: none; }
   @media print {
