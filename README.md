@@ -23,6 +23,7 @@ mysql -u root -p < database/02_datos_demo.sql    # opcional: organización de pr
 - `04_migracion_membresias.sql` es solo para bases creadas antes de que un usuario pudiera trabajar en varios consultorios. Se ejecuta una vez: pasa el rol, el profesional vinculado y el permiso de sobreturno de cada usuario a su acceso (membresía) en la organización.
 - `06_migracion_historia_clinica.sql` es solo para bases creadas antes de la historia clínica. Se ejecuta una vez: agrega la opción de historia compartida o privada en la organización y las tablas de antecedentes, evoluciones y aclaraciones. En Railway, cambiar `USE agendia;` por `USE railway;`.
 - `07_migracion_signos_vitales.sql` va después de la 06 (también una sola vez): agrega a las evoluciones peso, talla, perímetro cefálico, temperatura, tensión arterial, frecuencias cardíaca y respiratoria y saturación, y en cada profesional qué de eso usa.
+- `08_migracion_turnos_virtuales.sql` (una sola vez): agrega a los turnos la marca de turno virtual.
 - `05_migracion_cuentas.sql` es solo para bases creadas antes de «Mi cuenta» y «Recuperar contraseña». Se ejecuta una vez: agrega la versión de sesión de cada usuario (cambiar la contraseña cierra las otras sesiones) y la tabla de links de recuperación.
 - Con los datos demo se ingresa con **admin@agendip.com** / **admin123**. Cambie esa contraseña después de entrar.
 - Sin datos demo, use «Crear cuenta» en la pantalla de ingreso: se crea la organización con su usuario administrador.

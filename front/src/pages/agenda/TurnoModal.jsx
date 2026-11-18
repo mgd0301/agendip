@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiClock, FiFileText, FiXCircle, FiRotateCcw } from 'react-icons/fi';
+import { FiClock, FiFileText, FiVideo, FiXCircle, FiRotateCcw } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api, { errorMsg } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useDatos } from '../../context/DatosContext';
 import PacienteSelector from '../../components/PacienteSelector';
-import { Badge, Button, Field, Grid, Input, Modal, Muted, Row, Select, Spinner, Tab, Tabs, Textarea } from '../../components/ui';
+import { Badge, Button, Check, Field, Grid, Input, Modal, Muted, Row, Select, Spinner, Tab, Tabs, Textarea } from '../../components/ui';
 import { ahora, fechaHora, fechaLarga } from '../../utils/fechas';
 import { confirmar } from '../../utils/confirmar';
 import { theme as t } from '../../styles/GlobalStyle';
@@ -87,6 +87,7 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
     hora: inicial?.hora || '',
     duracion_min: turnoId ? '' : p?.duracion_turno_min || '',
     observaciones: '',
+    es_virtual: false,
   };
   });
 
@@ -108,6 +109,7 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
         hora: data.inicio.slice(11, 16),
         duracion_min: data.duracion_min,
         observaciones: data.observaciones || '',
+        es_virtual: !!Number(data.es_virtual),
       });
     });
 
@@ -182,6 +184,7 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
       hora: form.hora,
       duracion_min: Number(form.duracion_min) || undefined,
       observaciones: form.observaciones,
+      es_virtual: form.es_virtual,
       sobreturno,
     };
     try {
@@ -284,6 +287,11 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
                 <Row $wrap>
                   <Badge $color={est?.color}>{est?.etiqueta}</Badge>
                   {!!turno.sobreturno && <Badge $color="#9333ea">Sobreturno</Badge>}
+                  {!!Number(turno.es_virtual) && (
+                    <Badge $color="#0891b2">
+                      <FiVideo style={{ verticalAlign: '-2px' }} /> Virtual
+                    </Badge>
+                  )}
                   {usuario.profesional_id && (
                     <Button
                       $small
@@ -417,6 +425,16 @@ export default function TurnoModal({ turnoId, inicial, onClose, onSaved }) {
                   )}
                 </div>
               )}
+
+              <Check style={{ gridColumn: '1 / -1' }}>
+                <input
+                  type="checkbox"
+                  checked={form.es_virtual}
+                  onChange={(e) => setForm({ ...form, es_virtual: e.target.checked })}
+                  disabled={cancelado}
+                />
+                <FiVideo /> Turno virtual (videollamada)
+              </Check>
 
               <Field label="Observaciones" style={{ gridColumn: '1 / -1' }}>
                 <Textarea value={form.observaciones} onChange={set('observaciones')} disabled={cancelado} rows={2} />

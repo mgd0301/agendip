@@ -22,7 +22,9 @@ async function datosTurno(orgId, turnoId) {
 
 function variables(t) {
   const fecha = t.inicio.slice(0, 10);
+  const virtual = Number(t.es_virtual) === 1;
   return {
+    modalidad: virtual ? 'virtual' : 'presencial',
     paciente: `${t.pac_nombre} ${t.pac_apellido}`,
     paciente_nombre: t.pac_nombre,
     profesional: `${t.prof_nombre} ${t.prof_apellido}`,
@@ -31,7 +33,8 @@ function variables(t) {
     dia: DIAS[diaSemana(fecha)],
     hora: t.inicio.slice(11, 16),
     organizacion: t.org_nombre || '',
-    direccion: t.org_direccion || '',
+    // En un turno virtual la dirección del consultorio no aplica.
+    direccion: virtual ? 'consulta virtual' : t.org_direccion || '',
     telefono: t.org_telefono || '',
   };
 }
@@ -61,8 +64,13 @@ async function generarMensaje(orgId, turnoId, tipo, canal) {
     [orgId, tipo, canal]
   );
   const vars = variables(t);
-  const texto = render(plantilla ? plantilla.cuerpo : 'Turno con {profesional} el {dia} {fecha} a las {hora} hs.', vars);
-  const asunto = plantilla ? render(plantilla.asunto, vars) : null;
+  let texto = render(plantilla ? plantilla.cuerpo : 'Turno con {profesional} el {dia} {fecha} a las {hora} hs.', vars);
+  let asunto = plantilla ? render(plantilla.asunto, vars) : null;
+  // El turno virtual se anuncia arriba de todo, con ícono, sea cual sea la plantilla.
+  if (Number(t.es_virtual) === 1) {
+    texto = `💻 ${canal === 'whatsapp' ? '*TURNO VIRTUAL*' : 'TURNO VIRTUAL'}\n\n${texto}`;
+    if (asunto) asunto = `Turno virtual - ${asunto}`;
+  }
 
   let link = null;
   let destinatario = canal === 'email' ? t.pac_email : t.pac_telefono;

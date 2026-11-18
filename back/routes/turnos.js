@@ -7,11 +7,13 @@ const { cargarContexto, franjasDelDia, validarTurno, horariosLibres } = require(
 const { generarMensaje, telefonoWhatsapp } = require('../services/mensajes');
 
 const router = Router();
+// La base es utf8 de 3 bytes: los emojis del mensaje no se pueden guardar en el registro.
+const sinEmojis = (txt) => txt.replace(/[\u{10000}-\u{10FFFF}]\s?/gu, '');
 const ESTADOS = ['pendiente', 'confirmado', 'atendido', 'ausente', 'cancelado'];
 
 const SELECT_TURNO = `
   SELECT t.id, t.profesional_id, t.paciente_id, t.prestacion_id, t.inicio, t.fin, t.duracion_min,
-         t.estado, t.sobreturno, t.observaciones, t.motivo_cancelacion, t.creado_en, t.actualizado_en,
+         t.estado, t.sobreturno, t.es_virtual, t.observaciones, t.motivo_cancelacion, t.creado_en, t.actualizado_en,
          pa.nombre AS pac_nombre, pa.apellido AS pac_apellido, pa.telefono AS pac_telefono,
          pa.email AS pac_email, pa.dni AS pac_dni,
          pr.nombre AS prof_nombre, pr.apellido AS prof_apellido, pr.color AS prof_color,
@@ -90,7 +92,7 @@ router.get('/resumen-agenda', async (req, res) => {
   if (!prof) throw notFound('Profesional no encontrado');
 
   const turnos = await query(
-    `SELECT t.inicio, t.sobreturno, pa.nombre AS pac_nombre, pa.apellido AS pac_apellido, ps.nombre AS prestacion
+    `SELECT t.inicio, t.sobreturno, t.es_virtual, pa.nombre AS pac_nombre, pa.apellido AS pac_apellido, ps.nombre AS prestacion
        FROM turnos t
        JOIN pacientes pa ON pa.id = t.paciente_id
        LEFT JOIN prestaciones ps ON ps.id = t.prestacion_id
@@ -101,7 +103,7 @@ router.get('/resumen-agenda', async (req, res) => {
 
   const nombreDia = (f) => `${DIAS[diaSemana(f)]} ${formatoFecha(f).slice(0, 5)}`;
   const linea = (t) =>
-    `${t.inicio.slice(11, 16)} ${t.pac_apellido}, ${t.pac_nombre}${t.prestacion ? ` · ${t.prestacion}` : ''}${Number(t.sobreturno) ? ' (sobreturno)' : ''}`;
+    `${t.inicio.slice(11, 16)} ${t.pac_apellido}, ${t.pac_nombre}${t.prestacion ? ` · ${t.prestacion}` : ''}${Number(t.sobreturno) ? ' (sobreturno)' : ''}${Number(t.es_virtual) ? ' 💻 virtual' : ''}`;
   const titulo = desde === hasta ? nombreDia(desde) : `${formatoFecha(desde)} al ${formatoFecha(hasta)}`;
   const nombreProf = `${prof.nombre} ${prof.apellido}`.replace(/\s+/g, ' ').trim();
   const partes = [`*Agenda de ${nombreProf}* – ${titulo}`, ''];
@@ -269,6 +271,7 @@ router.post('/', async (req, res) => {
         duracion_min: duracion,
         estado: ESTADOS.includes(req.body.estado) && req.body.estado !== 'cancelado' ? req.body.estado : 'pendiente',
         sobreturno: esSobreturno ? 1 : 0,
+        es_virtual: bool(req.body.es_virtual) ? 1 : 0,
         observaciones: req.body.observaciones || null,
         creado_por: req.user.id,
       },
@@ -332,6 +335,7 @@ router.put('/:id', async (req, res) => {
       actualizado_en: ahora(),
     };
     if (req.body.observaciones !== undefined) datos.observaciones = req.body.observaciones || null;
+    if (req.body.es_virtual !== undefined) datos.es_virtual = bool(req.body.es_virtual) ? 1 : 0;
     await conn.query('UPDATE turnos SET ? WHERE id = ?', [datos, actual.id]);
 
     const reprogramado = inicio !== actual.inicio || Number(prof.id) !== Number(actual.profesional_id);
@@ -398,7 +402,7 @@ router.post('/:id/whatsapp', async (req, res) => {
     await conn.query(
       `INSERT INTO notificaciones (organizacion_id, turno_id, canal, tipo, destinatario, mensaje, estado, enviado_en, usuario_id)
        VALUES (?, ?, 'whatsapp', ?, ?, ?, 'manual', ?, ?)`,
-      [req.orgId, m.turno.id, tipo, m.destinatario, m.texto, ahora(), req.user.id]
+      [req.orgId, m.turno.id, tipo, m.destinatario, sinEmojis(m.texto), ahora(), req.user.id]
     );
     await registrar(conn, m.turno.id, req.user.id, 'mensaje', `WhatsApp (${tipo}) a ${m.destinatario}`);
   });

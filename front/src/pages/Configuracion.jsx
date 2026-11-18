@@ -21,7 +21,7 @@ const Vars = styled.div`
   code { background: ${t.primarySoft}; color: ${t.primary}; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 `;
 
-const VARIABLES = ['paciente', 'paciente_nombre', 'profesional', 'prestacion', 'dia', 'fecha', 'hora', 'organizacion', 'direccion', 'telefono'];
+const VARIABLES = ['paciente', 'paciente_nombre', 'profesional', 'prestacion', 'dia', 'fecha', 'hora', 'modalidad', 'organizacion', 'direccion', 'telefono'];
 const TIPOS_PLANTILLA = { confirmacion: 'Confirmación', recordatorio: 'Recordatorio', cancelacion: 'Cancelación', reprogramacion: 'Reprogramación' };
 const TIPOS_CAMPO = { texto: 'Texto', numero: 'Número', fecha: 'Fecha', opcion: 'Lista de opciones', si_no: 'Sí / No' };
 
@@ -170,6 +170,9 @@ function Plantillas() {
           <code key={v}>{`{${v}}`}</code>
         ))}
       </Vars>
+      <Muted as="p" $size="13px" style={{ margin: '0 0 12px' }}>
+        En los turnos virtuales el mensaje empieza con «💻 TURNO VIRTUAL» y {'{direccion}'} dice «consulta virtual».
+      </Muted>
       {lista.map((p) => (
         <Plantilla key={p.id} p={p} onSaved={cargar} />
       ))}

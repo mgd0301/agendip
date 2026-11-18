@@ -368,6 +368,7 @@ CREATE TABLE IF NOT EXISTS turnos (
   duracion_min       SMALLINT UNSIGNED NOT NULL,
   estado             ENUM('pendiente','confirmado','atendido','ausente','cancelado') NOT NULL DEFAULT 'pendiente',
   sobreturno         TINYINT(1) NOT NULL DEFAULT 0,
+  es_virtual         TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Consulta virtual (videollamada)',
   observaciones      TEXT NULL,
   motivo_cancelacion VARCHAR(255) NULL,
   creado_por         INT UNSIGNED NULL,

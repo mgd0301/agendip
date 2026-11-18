@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/turnos', async (req, res) => {
   res.json(
     await query(
-      `SELECT t.id, t.inicio, t.fin, t.duracion_min, t.estado, t.sobreturno, t.observaciones,
+      `SELECT t.id, t.inicio, t.fin, t.duracion_min, t.estado, t.sobreturno, t.es_virtual, t.observaciones,
               pr.nombre AS prof_nombre, pr.apellido AS prof_apellido, ps.nombre AS prestacion
          FROM turnos t
          JOIN profesionales pr ON pr.id = t.profesional_id

@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { FiVideo } from 'react-icons/fi';
 import { DIAS_CORTOS, hoy, rango, sumarDias } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
 
@@ -111,7 +112,7 @@ export default function VistaMes({ fecha, desde, datos, profIds, estados, onDia 
               {turnos.slice(0, 3).map((tu) => (
                 <span className="turno" key={tu.id}>
                   <i style={{ background: estados[tu.estado]?.color }} />
-                  {tu.inicio.slice(11, 16)} {tu.pac_apellido}
+                  {tu.inicio.slice(11, 16)} {!!Number(tu.es_virtual) && <FiVideo title="Turno virtual" style={{ color: '#0891b2', verticalAlign: '-2px', flexShrink: 0 }} />} {tu.pac_apellido}
                 </span>
               ))}
               {turnos.length > 3 && <span className="mas">+{turnos.length - 3} más</span>}

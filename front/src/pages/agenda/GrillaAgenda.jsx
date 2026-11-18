@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { FiMoreVertical } from 'react-icons/fi';
+import { FiMoreVertical, FiVideo } from 'react-icons/fi';
 import { aHora, aMin, hoy } from '../../utils/fechas';
 import { theme as t } from '../../styles/GlobalStyle';
 import { ALTURAS } from './alturas';
@@ -159,6 +159,7 @@ const Bloque = styled.button`
   strong { font-weight: 600; }
   .hora { color: ${t.muted}; font-variant-numeric: tabular-nums; }
   .chip { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${(p) => p.$estado}; margin-right: 4px; }
+  .virtual { vertical-align: -2px; margin-left: 4px; color: #0891b2; stroke-width: 2.5; }
   div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   user-select: none;
   -webkit-user-select: none;
@@ -541,6 +542,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
             {c.turnos.map(({ tu, a, b, lane, total }) => {
               const h = Math.max(y(b) - y(a) - 2, 16);
               const est = estados[tu.estado] || {};
+              const virtual = !!Number(tu.es_virtual) && <FiVideo className="virtual" aria-label="Virtual" />;
               const ancho = 100 / total;
               return (
                 <Bloque
@@ -565,7 +567,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                     e.stopPropagation();
                     if (!recienSoltado.current) onAbrir(tu.id);
                   }}
-                  title={`${tu.inicio.slice(11, 16)}–${tu.fin.slice(11, 16)} · ${tu.pac_apellido}, ${tu.pac_nombre}${tu.prestacion ? ` · ${tu.prestacion}` : ''} · ${est.etiqueta || tu.estado}${tu.sobreturno ? ' · Sobreturno' : ''}`}
+                  title={`${tu.inicio.slice(11, 16)}–${tu.fin.slice(11, 16)} · ${tu.pac_apellido}, ${tu.pac_nombre}${tu.prestacion ? ` · ${tu.prestacion}` : ''} · ${est.etiqueta || tu.estado}${tu.sobreturno ? ' · Sobreturno' : ''}${Number(tu.es_virtual) ? ' · Virtual' : ''}`}
                 >
                   {onMenu && (
                     <Puntos
@@ -593,7 +595,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                   {h < 34 ? (
                     <div>
                       <span className="chip" />
-                      <span className="hora">{tu.inicio.slice(11, 16)}</span> <strong>{tu.pac_apellido}</strong>
+                      <span className="hora">{tu.inicio.slice(11, 16)}</span> {virtual} <strong>{tu.pac_apellido}</strong>
                     </div>
                   ) : (
                     <>
@@ -601,6 +603,7 @@ export default function GrillaAgenda({ columnas, datos, estados, profesionales, 
                         <span className="chip" />
                         {tu.inicio.slice(11, 16)}–{tu.fin.slice(11, 16)}
                         {!!tu.sobreturno && ' · ST'}
+                        {virtual}
                       </div>
                       <div>
                         <strong>

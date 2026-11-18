@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import { FiClock, FiExternalLink, FiXCircle } from "react-icons/fi";
+import { FiClock, FiExternalLink, FiVideo, FiXCircle } from "react-icons/fi";
 import { theme as t } from "../../styles/GlobalStyle";
 import { ACCIONES } from "./acciones";
 
@@ -138,6 +138,7 @@ export default function MenuTurno({
         <header>
           {turno.inicio.slice(11, 16)} · {turno.pac_apellido},{" "}
           {turno.pac_nombre}
+          {!!Number(turno.es_virtual) && <FiVideo title="Turno virtual" style={{ color: '#0891b2', verticalAlign: '-2px', marginLeft: 6 }} />}
         </header>
         {!cancelado &&
           ACCIONES.filter((a) => a.estado !== turno.estado).map(

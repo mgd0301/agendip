@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiVideo } from 'react-icons/fi';
 import api, { errorMsg } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useDatos } from '../context/DatosContext';
@@ -113,6 +113,11 @@ export default function Turnos() {
                         {DIAS_CORTOS[diaSemana(f)]} {fechaCorta(f)} · <strong>{tu.inicio.slice(11, 16)}</strong>
                         <Muted $size="12px"> ({tu.duracion_min} min)</Muted>
                         {tu.sobreturno ? <Badge $color="#ea580c" style={{ marginLeft: 6 }}>Sobreturno</Badge> : null}
+                        {!!Number(tu.es_virtual) && (
+                          <Badge $color="#0891b2" style={{ marginLeft: 6 }}>
+                            <FiVideo style={{ verticalAlign: '-2px' }} /> Virtual
+                          </Badge>
+                        )}
                       </td>
                       <td>
                         {tu.pac_apellido}, {tu.pac_nombre}

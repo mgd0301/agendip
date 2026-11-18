@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { FiFileText, FiPlus, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { FiFileText, FiPlus, FiSearch, FiTrash2, FiVideo } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { errorMsg } from '../api';
@@ -233,7 +233,9 @@ function PacienteModal({ id, onClose, onSaved }) {
                 <tbody>
                   {turnos.map((tu) => (
                     <tr key={tu.id}>
-                      <td>{fechaHora(tu.inicio)}</td>
+                      <td>
+                        {fechaHora(tu.inicio)} {!!Number(tu.es_virtual) && <FiVideo title="Turno virtual" style={{ color: '#0891b2', verticalAlign: '-2px' }} />}
+                      </td>
                       <td>
                         {tu.prof_apellido}, {tu.prof_nombre}
                       </td>
